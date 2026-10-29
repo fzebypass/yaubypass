@@ -32,6 +32,7 @@
 #include <dxgi.h>
 #include <tlhelp32.h>
 #include "prot/protection.hpp"
+#include <Core/Features/LicenseGate.hpp>
 using namespace Core;
 
 #pragma comment(lib, "d3d11.lib")
@@ -213,6 +214,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     SetErrorMode(SEM_NOGPFAULTERRORBOX);
     SetUnhandledExceptionFilter(CrashHandler);
     SetUnhandledExceptionFilter(VectoredHandler);
+
+    // ---- licence gate: the cheat only starts with a valid key -------------
+    if (!LicenseGate::Run(hInstance)) {
+        return 0;
+    }
 
     WNDCLASSEXW wc;
     wc.cbSize = sizeof(WNDCLASSEXW);

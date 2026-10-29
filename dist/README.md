@@ -1,5 +1,8 @@
 # Wizard External — Start per cmd (ohne EXE-Download)
 
+Loader und Cheat sind **eine** EXE: Start → Key-Fenster (gold, mit Logo) → Key wird geprüft
+→ Cheat läuft → F1 öffnet das Menü. Ohne gültigen Key passiert nichts weiter.
+
 Der User muss nichts herunterladen und nichts anklicken. Er pastet **eine Zeile in cmd**, der Rest läuft automatisch:
 
 ```
