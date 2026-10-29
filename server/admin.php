@@ -1,16 +1,15 @@
 <?php
 // ---------------------------------------------------------------------------
 //  POST admin.php
-//      token      = ADMIN_TOKEN aus config.php
-//      discord_id = 123456789012345678
-//      days       = 30 | 0 (0 = Lifetime)
+//      token = ADMIN_TOKEN aus config.php
+//      days  = 30 | 0 (0 = Lifetime)
+//      count = 1..100   (wie viele Keys auf einmal)
 //
 //  Antwort (eine Zeile):
-//      OK|A1B2-C3D4-E5F6-7788|2026-11-28 20:00:00
 //      OK|A1B2-C3D4-E5F6-7788|LIFETIME
-//      ERR|already_registered  ID hat schon eine Lizenz (falsche ID)
-//      ERR|auth                Token falsch
-//      ERR|bad_id              keine gueltige Discord-ID
+//      OK|K1,K2,K3|2026-11-28 20:00:00      (count > 1, Keys mit Komma getrennt)
+//      ERR|auth        Token falsch
+//      ERR|db          Datenbankfehler
 // ---------------------------------------------------------------------------
 
 require __DIR__ . '/config.php';
@@ -19,56 +18,55 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     fail('bad_request');
 }
 
-$token      = (string)($_POST['token'] ?? '');
-$discord_id = trim($_POST['discord_id'] ?? '');
-$days       = (int)($_POST['days'] ?? 30);
+$token = (string)($_POST['token'] ?? '');
+$days  = (int)($_POST['days'] ?? 0);
+$count = (int)($_POST['count'] ?? 1);
 
 if (!hash_equals(ADMIN_TOKEN, $token)) {
     fail('auth');
 }
 
-if ($discord_id === '' || !ctype_digit($discord_id) || strlen($discord_id) > 32) {
-    fail('bad_id');
-}
+if ($days < 0)   $days = 0;
+if ($count < 1)  $count = 1;
+if ($count > 100) $count = 100;
 
-if ($days < 0) {
-    $days = 0;
-}
+$expires_at = $days > 0 ? date('Y-m-d H:i:s', strtotime('+' . $days . ' days')) : null;
 
-// ---- is the ID already taken? ---------------------------------------------
-try {
-    $check = db()->prepare('SELECT 1 FROM licenses WHERE discord_id = ? LIMIT 1');
-    $check->execute([$discord_id]);
-    if ($check->fetch()) {
-        fail('already_registered');
+// ohne 0/O/1/I - laesst sich am Telefon vorlesen
+$alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+$insert = db()->prepare('INSERT INTO licenses (license_key, key_plain, expires_at) VALUES (?, ?, ?)');
+
+$created = [];
+
+for ($n = 0; $n < $count; $n++) {
+    $done = false;
+
+    for ($attempt = 0; $attempt < 10 && !$done; $attempt++) {
+        $plain = '';
+        for ($i = 0; $i < 16; $i++) {
+            $plain .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        $formatted = implode('-', str_split($plain, 4));
+
+        try {
+            $insert->execute([$formatted, $plain, $expires_at]);
+            $created[] = $formatted;
+            $done = true;
+        } catch (PDOException $e) {
+            if ($e->getCode() !== '23000') {
+                if ($created === []) fail('db');
+                break 2;
+            }
+            // Schluesselkollision - neuer Versuch
+        } catch (Throwable $e) {
+            if ($created === []) fail('db');
+            break 2;
+        }
     }
-} catch (Throwable $e) {
+}
+
+if ($created === []) {
     fail('db');
 }
 
-// ---- build the key ---------------------------------------------------------
-$alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // ohne 0/O/1/I
-$raw = '';
-for ($i = 0; $i < 16; $i++) {
-    $raw .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-}
-$license_key = implode('-', str_split($raw, 4));
-
-$expires_at = $days > 0
-    ? date('Y-m-d H:i:s', strtotime('+' . $days . ' days'))
-    : null;
-
-try {
-    $insert = db()->prepare('INSERT INTO licenses (discord_id, license_key, expires_at) VALUES (?, ?, ?)');
-    $insert->execute([$discord_id, $license_key, $expires_at]);
-} catch (PDOException $e) {
-    // 23000 = duplicate key - the ID got registered in between
-    if ($e->getCode() === '23000') {
-        fail('already_registered');
-    }
-    fail('db');
-} catch (Throwable $e) {
-    fail('db');
-}
-
-respond('OK|' . $license_key . '|' . ($expires_at === null ? 'LIFETIME' : $expires_at));
+respond('OK|' . implode(',', $created) . '|' . ($expires_at === null ? 'LIFETIME' : $expires_at));

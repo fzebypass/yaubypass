@@ -1,82 +1,60 @@
 # PRUDA — Loader + Admin-Panel + Lizenz-API
 
-Drei Teile arbeiten zusammen:
+Kein Discord-Login mehr: der User bekommt einen **Key** und gibt nur den ein.
 
 | Teil | Datei | Aufgabe |
 |---|---|---|
-| **Loader** | `spoofer_imgui\bin\Menu.exe` | Discord-ID eingeben, Lizenz prüfen, Cheat starten |
-| **Admin-Panel** | [admin/bin/admin.exe](admin/bin/admin.exe) | Discord-ID + Dauer → Key wird automatisch erzeugt |
-| **API** | [server/](server) | PHP + MySQL, hält die Lizenzen |
+| **Loader** | `spoofer_imgui\bin\Menu.exe` | Key eingeben, Lizenz prüfen, Cheat starten |
+| **Admin-Panel** | [admin/bin/admin.exe](admin/bin/admin.exe) | Keys erzeugen (einzeln oder bis 100 am Stück) |
+| **API** | [server/](server) | PHP + MySQL, hält die Keys |
 
 ---
 
-## Der Ablauf
+## Ablauf
 
 ```
-Admin-Panel                      Server (PHP)                    Loader
------------                      ------------                    ------
-ID 1234567890 + 30 Tage   →   INSERT licenses            ←   ID eingeben
-Key wird angezeigt        ←   OK|A1B2-C3D4-...|2026-11-28     Server prüft
-                                                             Cheat startet
-                                                             F1 öffnet Menü
+Admin-Panel                   Server (PHP)                  Loader
+-----------                   ------------                  ------
+Tage + Anzahl wählen   →   INSERT licenses           ←   Key eingeben
+Keys werden angezeigt  ←   OK|K1,K2,K3|LIFETIME          Server prüft
+Keys in Zwischenablage                                    Cheat startet
+                                                          F1 öffnet Menü
 ```
 
-- Eine Discord-ID kann **nur einmal** registriert werden. Beim zweiten Versuch
-  antwortet der Server `already_registered` → das Panel zeigt
-  **„Falsche ID - schon registriert"**.
-- Gibt der User im Loader eine ID ein, die es nicht gibt, kommt
-  **„Falsche ID - nicht registriert"**.
-- Der Key ist optional: der Loader akzeptiert die ID auch ohne Key. Wer will,
-  kann den Key im Feld mitgeben — dann muss er zur ID passen.
+- Der Key wird **ohne** Discord-ID geprüft — er allein ist die Lizenz.
+- Groß-/Kleinschreibung und Bindestriche sind egal: `nflgqsp lzl76 svcz`
+  funktioniert genauso wie `NFLG-QSPL-ZL76-SVCZ`.
+- Der Loader prüft beim Start. Ist der Key gültig, startet der Cheat automatisch.
 
 ---
 
-## 1. Server einrichten (einmal)
+## Server einrichten (einmal)
 
-1. **Datenbank** in phpMyAdmin anlegen, dann den Inhalt von [server/schema.sql](server/schema.sql)
-   im SQL-Tab ausführen. Ergebnis: Tabelle `licenses` mit `UNIQUE` auf `discord_id`.
-2. [server/config.php](server/config.php) bearbeiten: `DB_HOST`, `DB_NAME`, `DB_USER`,
-   `DB_PASS` und `ADMIN_TOKEN` (langer Zufallswert).
-3. Die drei Dateien `config.php`, `login.php`, `admin.php` per FTP nach
-   `https://fivem.ovh/goonen/license/` hochladen.
+1. **Datenbank** anlegen, dann [server/schema.sql](server/schema.sql) im SQL-Tab ausführen.
+2. [server/config.php](server/config.php): `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`
+   und `ADMIN_TOKEN` (langer Zufallswert) eintragen.
+3. `config.php`, `login.php`, `admin.php` nach `https://fivem.ovh/goonen/license/` hochladen.
+4. Für die 50 fertigen Lifetime-Keys: [server/keys_lifetime_50.sql](server/keys_lifetime_50.sql)
+   im SQL-Tab ausführen (die lesbare Liste liegt in
+   [server/keys_lifetime_50.txt](server/keys_lifetime_50.txt)).
 
-Test aus dem Browser oder per curl:
-
+Test:
 ```
-curl -d "discord_id=1234567890" https://fivem.ovh/goonen/license/login.php
+curl -d "key=NFLG-QSPL-ZL76-SVCZ" https://fivem.ovh/goonen/license/login.php
 ```
-
-Erwartet: `ERR|wrong_id` (die ID existiert noch nicht) — das heißt: API läuft.
+Erwartet: `OK|LIFETIME|0` — wenn die Keys importiert sind.
 
 ---
 
-## 2. Admin-Panel benutzen
+## Admin-Panel
 
-1. Neben `admin.exe` eine Datei **`admin.txt`** legen, Inhalt = dein `ADMIN_TOKEN`.
-   Dann ist das Token-Feld vorausgefüllt und du musst es nicht jedes Mal tippen.
-   (`admin.txt` ist in `.gitignore` — nie ins Repo.)
-2. `admin.exe` starten → Discord-ID eingeben → Tage wählen:
-   **30** / **1 Monat** (=30) / **LFT** (=0, Lifetime).
-3. **KEY ERSTELLEN** → der Key erscheint und liegt in der Zwischenablage.
-   Ablaufdatum steht in der Statuszeile.
+1. Datei **`admin.txt`** neben `admin.exe` mit dem `ADMIN_TOKEN` → Feld ist vorausgefüllt.
+2. **Tage** wählen: `0` = Lifetime, oder die Buttons **30 Tage / 1 Monat / Lifetime**.
+3. **Anzahl**: wie viele Keys auf einmal (1–100).
+4. **KEYS ERSTELLEN** → Keys erscheinen in der Liste und liegen in der Zwischenablage.
 
-Läuft die API woanders, eine **`api.txt`** neben die exe legen:
-
-```
-https://fivem.ovh/goonen/license/
-```
-
+Anderer Server? Datei **`api.txt`** daneben, Inhalt z. B. `https://fivem.ovh/goonen/license/`.
 Gleiche Datei gilt für den Loader.
-
----
-
-## 3. Loader benutzen
-
-`Menu.exe` (aus `spoofer_imgui\bin\`) und `Wizard External.exe` müssen **im selben Ordner**
-liegen. Loader starten → Discord-ID eintippen → Enter. Bei gültiger Lizenz startet der
-Cheat automatisch, im Spiel öffnet **F1** das Menü.
-
-Fehlt die Cheat-EXE, zeigt der Loader „Wizard External.exe fehlt neben dem Loader".
 
 ---
 
@@ -86,48 +64,47 @@ Reiner Text, eine Zeile, `|`-getrennt:
 
 | Endpoint | Antwort |
 |---|---|
-| `login.php` | `OK\|2026-11-28\|30`, `OK\|LIFETIME\|0` |
-| | `ERR\|wrong_id`, `expired`, `banned`, `bad_key`, `bad_id`, `db` |
-| `admin.php` | `OK\|A1B2-C3D4-E5F6-7788\|2026-11-28 20:00:00`, `OK\|...\|LIFETIME` |
-| | `ERR\|already_registered`, `auth`, `bad_id`, `db` |
+| `login.php` (`key`) | `OK\|2026-11-28\|30`, `OK\|LIFETIME\|0` |
+| | `ERR\|wrong_key`, `expired`, `banned`, `bad_key`, `db` |
+| `admin.php` (`token`, `days`, `count`) | `OK\|A1B2-C3D4-E5F6-7788\|LIFETIME` |
+| | `OK\|K1,K2,K3\|2026-11-28 20:00:00` (mehrere) |
+| | `ERR\|auth`, `db` |
 
 ---
 
 ## Was getestet ist
 
-Der Client-Code in [admin/license_client.hpp](admin/license_client.hpp) wurde gegen einen
-Mock-Server mit denselben Regeln geprüft — 11 Fälle, alle korrekt:
+Der Client ([admin/license_client.hpp](admin/license_client.hpp)) lief gegen einen Mock-Server
+mit denselben Regeln:
 
 | Fall | Ergebnis |
 |---|---|
-| gültige ID (30 Tage) | `OK\|2026-11-28\|30` |
-| unbekannte ID | `Falsche ID - nicht registriert` |
-| abgelaufene Lizenz | `Lizenz abgelaufen` |
-| gesperrte Lizenz | `Lizenz gesperrt` |
-| falscher Key | `Key passt nicht zu dieser ID` |
-| ID mit Buchstaben | `Ungueltige Discord-ID (nur Zahlen)` |
-| Key erzeugen (30 Tage) | `OK`, Key im Format `XXXX-XXXX-XXXX-XXXX` |
-| dieselbe ID nochmal | `Falsche ID - schon registriert` |
+| Lifetime-Key | `OK\|LIFETIME\|0` |
+| gleicher Key in Kleinbuchstaben mit Leerzeichen | `OK` (Normalisierung greift) |
+| 30-Tage-Key | `OK\|2026-11-28\|30` |
+| abgelaufener Key | `Key abgelaufen` |
+| gesperrter Key | `Key gesperrt` |
+| unbekannter Key | `Falscher Key` |
+| leerer Key | `Key-Format ungueltig` |
+| 50 Keys auf einmal erzeugen | `OK`, 50 Keys, `LIFETIME` |
 | falsches Admin-Token | `Admin-Token falsch` |
-| Key erzeugen (0 = LFT) | `OK`, `LIFETIME` |
-| danach einloggen | `OK\|LIFETIME\|0` |
 
-**Nicht getestet:** die PHP-Dateien selbst (auf dem Rechner ist kein PHP installiert) und
-der echte HTTPS-Endpunkt. Nach dem Upload einmal den curl-Befehl oben ausführen.
+Die 50 ausgelieferten Keys sind zusätzlich geprüft: 50 Stück, 0 Duplikate,
+alle im Format `XXXX-XXXX-XXXX-XXXX` ohne `0/O/1/I`.
+
+**Nicht getestet:** die PHP-Dateien selbst (kein PHP auf dem Rechner) und der echte
+HTTPS-Endpunkt. Nach dem Upload einmal den curl-Befehl oben laufen lassen.
 
 ---
 
 ## Wichtig / Grenzen
 
-- **`ADMIN_TOKEN` ist der Generalschlüssel.** Er liegt in `admin.txt` beim Admin, nicht
-  beim User. Wenn er rausgeht, kann jeder Keys erzeugen → Token in `config.php` ändern.
-- **HTTPS ist Pflicht.** Über HTTP kann jeder die Discord-IDs mitlesen.
-- **Keine HWID-Bindung.** Die Lizenz hängt nur an der Discord-ID, also kann eine Lizenz
-  auf beliebig vielen PCs laufen. Wenn du das willst: `hwid` mitschicken, in der DB
-  speichern und beim ersten Login binden (sag Bescheid, dann baue ich es ein).
+- **`ADMIN_TOKEN` ist der Generalschlüssel** — nur beim Admin in `admin.txt`, nie ins Repo
+  (steht in `.gitignore`). Wenn er rausgeht: in `config.php` ändern.
+- **HTTPS ist Pflicht**, sonst liest jeder die Keys mit.
+- **Keys sind an keinen PC gebunden** — ein Key läuft auf beliebig vielen Rechnern.
+  HWID-Bindung wäre der nächste Schritt (sag Bescheid).
+- **Keys, die im Chat stehen, gelten als veröffentlicht.** Wenn du sie irgendwo gepostet
+  hast, behandle sie als verbrannt und erzeuge neue (Panel → Anzahl 50 → 0 Tage).
 - **Zwei Kopien von `license_client.hpp`** existieren (Loader + Admin-Panel), weil das
-  Loader-Projekt ein eigener Ordner ist. Bei Änderungen beide ersetzen:
-  `spoofer_imgui\src\license_client.hpp` und `admin\license_client.hpp`.
-- Der Loader prüft die Lizenz **beim Start**. Wer den Prozess offen lässt, behält Zugriff
-  bis zum Schließen — für eine echte Laufzeitprüfung müsste der Cheat selbst alle
-  X Minuten nachfragen.
+  Loader-Projekt ein eigener Ordner ist. Bei Änderungen beide ersetzen.

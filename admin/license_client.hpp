@@ -1,6 +1,6 @@
 #pragma once
 // ---------------------------------------------------------------------------
-//  PRUDA licence client
+//  PRUDA licence client (key based)
 //  Talks to the PHP API in server/ (login.php / admin.php).
 //  The base URL can be overridden without a rebuild: put a file named
 //  "api.txt" next to the exe that contains the folder URL, e.g.
@@ -12,11 +12,11 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <cctype>
 #pragma comment(lib, "winhttp.lib")
 
 namespace license {
 
-	// ------------------------------------------------------------------ base
 	inline const wchar_t* DEFAULT_API_BASE = L"https://fivem.ovh/goonen/license/";
 
 	struct Url {
@@ -26,6 +26,7 @@ namespace license {
 		bool https = true;
 	};
 
+	// --------------------------------------------------------------- string
 	inline std::wstring widen(const std::string& s) {
 		if (s.empty()) return L"";
 		int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
@@ -36,9 +37,9 @@ namespace license {
 
 	inline std::string narrow(const std::wstring& s) {
 		if (s.empty()) return "";
-		int len = WideCharToMultiByte(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0, nullptr, nullptr);
+		int len = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), nullptr, 0, nullptr, nullptr);
 		std::string out((size_t)len, 0);
-		WideCharToMultiByte(CP_UTF8, 0, s.data(), (int)s.size(), &out[0], len, nullptr, nullptr);
+		WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), &out[0], len, nullptr, nullptr);
 		return out;
 	}
 
@@ -54,6 +55,20 @@ namespace license {
 		if (a == std::wstring::npos) return L"";
 		size_t b = s.find_last_not_of(L" \t\r\n");
 		return s.substr(a, b - a + 1);
+	}
+
+	inline std::string upper(std::string s) {
+		for (char& c : s) c = (char)toupper((unsigned char)c);
+		return s;
+	}
+
+	// Keys are typed by humans: drop spaces and dashes, compare uppercase.
+	inline std::string normalize_key(const std::string& raw) {
+		std::string out;
+		for (unsigned char c : raw) {
+			if (isalnum(c)) out.push_back((char)toupper(c));
+		}
+		return out;
 	}
 
 	inline std::string url_encode(const std::string& s) {
@@ -77,6 +92,7 @@ namespace license {
 		return out;
 	}
 
+	// ------------------------------------------------------------------ url
 	inline std::wstring exe_dir() {
 		wchar_t path[MAX_PATH]{};
 		if (!GetModuleFileNameW(nullptr, path, MAX_PATH)) return L"";
@@ -113,10 +129,10 @@ namespace license {
 		std::wstring u = input;
 		if (u.rfind(L"https://", 0) == 0) { r.https = true; r.port = 443; u = u.substr(8); }
 		else if (u.rfind(L"http://", 0) == 0) { r.https = false; r.port = 80; u = u.substr(7); }
+
 		size_t slash = u.find(L'/');
 		std::wstring authority = slice_authority(u, slash);
-		if (slash == std::wstring::npos) r.path = L"/";
-		else r.path = u.substr(slash);
+		r.path = slash == std::wstring::npos ? L"/" : u.substr(slash);
 
 		// authority may carry an explicit port (host:8080)
 		size_t colon = authority.find(L':');
@@ -131,6 +147,7 @@ namespace license {
 		return r;
 	}
 
+	// ----------------------------------------------------------------- http
 	inline DWORD& last_error() {
 		static DWORD value = 0;
 		return value;
@@ -150,9 +167,12 @@ namespace license {
 		bool ok = false;
 		HINTERNET connect = WinHttpConnect(session, url.host.c_str(), url.port, 0);
 		if (!connect) last_error() = GetLastError();
+
 		if (connect) {
 			HINTERNET request = WinHttpOpenRequest(connect, L"POST", url.path.c_str(), nullptr,
 				WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, url.https ? WINHTTP_FLAG_SECURE : 0);
+			if (!request) last_error() = GetLastError();
+
 			if (request) {
 				const wchar_t* headers = L"Content-Type: application/x-www-form-urlencoded\r\n";
 				if (WinHttpSendRequest(request, headers, (DWORD)-1L, (LPVOID)body.data(),
@@ -167,40 +187,36 @@ namespace license {
 					while (WinHttpReadData(request, buf, sizeof(buf), &read) && read > 0)
 						out.append(buf, read);
 
-				ok = (status == 200) && !out.empty();
-				if (!ok) last_error() = status;
+					ok = (status == 200) && !out.empty();
+					if (!ok) last_error() = status;
+				}
+				else {
+					last_error() = GetLastError();
+				}
+				WinHttpCloseHandle(request);
 			}
-			else {
-				last_error() = GetLastError();
-			}
-			WinHttpCloseHandle(request);
+			WinHttpCloseHandle(connect);
 		}
-		else {
-			last_error() = GetLastError();
-		}
-		WinHttpCloseHandle(connect);
-	}
 		WinHttpCloseHandle(session);
 		return ok;
 	}
 
-	// -------------------------------------------------------------- response
+	// ------------------------------------------------------------- response
 	struct Response {
 		bool ok = false;
 		std::string code = "network";
 		std::string message;
 		std::string expires = "-";
 		int days_left = 0;
-		std::string key;
+		std::string key;                 // one key, or "K1,K2,K3" for bulk
+		std::vector<std::string> keys;
 	};
 
 	inline std::string error_text(const std::string& code) {
-		if (code == "wrong_id")          return "Falsche ID - nicht registriert";
-		if (code == "expired")           return "Lizenz abgelaufen";
-		if (code == "banned")            return "Lizenz gesperrt";
-		if (code == "bad_key")           return "Key passt nicht zu dieser ID";
-		if (code == "bad_id")            return "Ungueltige Discord-ID (nur Zahlen)";
-		if (code == "already_registered")return "Falsche ID - schon registriert";
+		if (code == "wrong_key")         return "Falscher Key";
+		if (code == "expired")           return "Key abgelaufen";
+		if (code == "banned")            return "Key gesperrt";
+		if (code == "bad_key")           return "Key-Format ungueltig";
 		if (code == "auth")              return "Admin-Token falsch";
 		if (code == "db")                return "Server-Datenbank Fehler";
 		if (code == "bad_request")       return "Ungueltige Anfrage";
@@ -216,9 +232,7 @@ namespace license {
 			r.code = "OK";
 			r.expires = parts[1];
 			r.days_left = parts.size() > 2 ? atoi(parts[2].c_str()) : 0;
-			r.message = r.expires == "LIFETIME"
-				? "Lizenz aktiv - Lifetime"
-				: "Lizenz aktiv";
+			r.message = r.expires == "LIFETIME" ? "Key aktiv - Lifetime" : "Key aktiv";
 			return r;
 		}
 		r.code = parts.size() > 1 ? trim(parts[1]) : "bad_request";
@@ -226,10 +240,9 @@ namespace license {
 		return r;
 	}
 
-	// ----------------------------------------------------------------- calls
-	inline Response login(const std::string& discord_id, const std::string& key) {
-		std::string body = "discord_id=" + url_encode(trim(discord_id));
-		body += "&key=" + url_encode(trim(key));
+	// ---------------------------------------------------------------- calls
+	inline Response login(const std::string& key) {
+		const std::string body = "key=" + url_encode(normalize_key(key));
 
 		std::string raw;
 		if (!http_post(parse_url(api_base() + L"login.php"), body, raw)) {
@@ -241,10 +254,13 @@ namespace license {
 		return parse_login(raw);
 	}
 
-	inline Response admin_create(const std::string& token, const std::string& discord_id, int days) {
+	inline Response admin_create(const std::string& token, int days, int count = 1) {
+		if (count < 1) count = 1;
+		if (count > 100) count = 100;
+
 		std::string body = "token=" + url_encode(trim(token));
-		body += "&discord_id=" + url_encode(trim(discord_id));
 		body += "&days=" + std::to_string(days);
+		body += "&count=" + std::to_string(count);
 
 		std::string raw;
 		if (!http_post(parse_url(api_base() + L"admin.php"), body, raw)) {
@@ -261,7 +277,13 @@ namespace license {
 			r.code = "OK";
 			r.key = parts[1];
 			r.expires = parts[2];
-			r.message = "Key erstellt";
+			for (const auto& k : split(r.key, ',')) {
+				const std::string clean = trim(k);
+				if (!clean.empty()) r.keys.push_back(clean);
+			}
+			r.message = r.keys.size() > 1
+				? std::to_string(r.keys.size()) + " Keys erstellt"
+				: "Key erstellt";
 			return r;
 		}
 		r.code = parts.size() > 1 ? trim(parts[1]) : "bad_request";
@@ -287,7 +309,7 @@ namespace license {
 			error = L"Wizard External.exe fehlt neben dem Loader";
 			return false;
 		}
-		std::wstring dir = exe_dir();
+		const std::wstring dir = exe_dir();
 		HINSTANCE result = ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, dir.c_str(), SW_SHOWNORMAL);
 		if ((INT_PTR)result <= 32) {
 			error = L"Cheat konnte nicht gestartet werden";
