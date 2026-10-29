@@ -1,0 +1,84 @@
+name: Build
+
+# Tag pushen -> Release mit EXE wird automatisch erzeugt:
+#   git tag v1.0.1 && git push origin v1.0.1
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write     # nötig, um die EXE an ein Release zu hängen
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2025      # Windows Server 2025 + VS 2026 (v145) + SDK 10.0.26100
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: MSBuild einrichten
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Rebuild Release x64
+        shell: cmd
+        run: msbuild External.sln -t:Rebuild -p:Configuration=Release -p:Platform=x64 -m -v:m -nologo
+
+      # Verhindert genau den Fehler "Diese App kann auf dem PC nicht ausgeführt
+      # werden": ein 0-Byte- oder abgeschnittener Link wird nie ausgeliefert.
+      - name: EXE prüfen und umbenennen
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'x64\Release\Wizard External.exe'
+
+          if (-not (Test-Path $exe)) { throw "Build hat keine EXE erzeugt: $exe" }
+
+          $fi = Get-Item $exe
+          if ($fi.Length -lt 500KB) { throw "EXE ist nur $($fi.Length) Bytes gross - kaputter Build" }
+
+          $fs = [IO.File]::OpenRead($fi.FullName)
+          $sig = New-Object byte[] 2
+          $null = $fs.Read($sig, 0, 2)
+          $fs.Close()
+          if ($sig[0] -ne 0x4D -or $sig[1] -ne 0x5A) { throw 'Kein gueltiges PE (MZ-Header fehlt)' }
+
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $fi.FullName 'dist\WizardExternal.exe' -Force
+
+          $sha = (Get-FileHash 'dist\WizardExternal.exe' -Algorithm SHA256).Hash
+          Write-Host "EXE: $($fi.Length) Bytes" -ForegroundColor Green
+          Write-Host "SHA256: $sha"
+
+          @(
+            '### Build OK'
+            ''
+            '| | |'
+            '|---|---|'
+            "| Groesse | $($fi.Length) Bytes |"
+            "| SHA256 | ``$sha`` |"
+            "| Commit | ``$env:GITHUB_SHA`` |"
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: WizardExternal
+          path: dist/WizardExternal.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      # Nur bei Tags (v1.0.0, v1.0.1, ...). Der Dateiname MUSS zu $AssetName
+      # in dist/install.ps1 passen, sonst findet der Launcher das Asset nicht.
+      - name: Release veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/WizardExternal.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true

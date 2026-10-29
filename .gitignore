@@ -1,0 +1,31 @@
+# ---- Build-Artefakte (werden von GitHub Actions erzeugt) ----
+x64/
+Debug/
+Release/
+src/x64/
+src/Wizard External/
+*.obj
+*.pdb
+*.iobj
+*.ipdb
+*.ilk
+*.exe
+*.lib.tmp
+
+# ---- Visual Studio ----
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+.vscode/
+
+# ---- NuGet ----
+packages/
+*.nupkg
+
+# ---- Agent / temporär ----
+.freebuff/
+dist/WizardExternal.exe
+Thumbs.db
+desktop.ini
