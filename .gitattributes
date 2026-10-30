@@ -1,0 +1,4 @@
+# Batchdateien und der Base64-Payload müssen byte-genau ausgeliefert werden.
+# Ohne diese Zeilen normalisiert Git auf LF, und cmd scheitert dann an goto/Labels.
+*.cmd -text
+*.b64 -text
