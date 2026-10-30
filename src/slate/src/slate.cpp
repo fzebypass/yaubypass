@@ -615,22 +615,26 @@ namespace {
         }
     }
 
-    void draw_seasonal_logo_widget(const ImVec2& size) {
-        const ImVec2 min = GetCursorScreenPos();
-        Dummy(size);
-
-        ImDrawList* draw = GetWindowDrawList();
+    // Draws the lily mark into the given box, aspect-correct and centred. Falls back to
+    // the drawn infinity if the embedded texture could not be created.
+    void draw_menu_logo(ImDrawList* draw, const ImVec2& min, const ImVec2& max, const float alpha = 1.f) {
         if (menu_logo_texture.w > 0.f && menu_logo_texture.h > 0.f) {
-            // The real mark from the setup animation, aspect-correct inside the box.
-            const float scale = ImMin(size.x / menu_logo_texture.w, size.y / menu_logo_texture.h);
-            const ImVec2 draw_size{ menu_logo_texture.w * scale, menu_logo_texture.h * scale };
-            const ImVec2 pos{ min.x + (size.x - draw_size.x) * 0.5f, min.y + (size.y - draw_size.y) * 0.5f };
-            draw->AddImage((ImTextureID)menu_logo_texture, pos, pos + draw_size);
+            const float scale = ImMin((max.x - min.x) / menu_logo_texture.w, (max.y - min.y) / menu_logo_texture.h);
+            const ImVec2 size{ menu_logo_texture.w * scale, menu_logo_texture.h * scale };
+            const ImVec2 pos{ (min.x + max.x - size.x) * 0.5f, (min.y + max.y - size.y) * 0.5f };
+            draw->AddImage((ImTextureID)menu_logo_texture, pos, pos + size, { 0, 0 }, { 1, 1 },
+                ImGui::GetColorU32(ImVec4(1.f, 1.f, 1.f, ImClamp(alpha, 0.f, 1.f))));
             return;
         }
 
         const auto& palette = get_active_menu_palette();
-        draw_infinity_logo(draw, min, min + size, palette.bright, palette.accent, 1.f);
+        draw_infinity_logo(draw, min, max, palette.bright, palette.accent, alpha);
+    }
+
+    void draw_seasonal_logo_widget(const ImVec2& size) {
+        const ImVec2 min = GetCursorScreenPos();
+        Dummy(size);
+        draw_menu_logo(GetWindowDrawList(), min, min + size, 1.f);
     }
 
     enum class keybind_overlay_mode_t {
@@ -1321,7 +1325,7 @@ namespace {
         }
         else {
             draw->AddCircleFilled((avatar_min + avatar_max) * 0.5f, 12 ds, g_style->col(pcol_text));
-            draw_seasonal_logo(draw, icon_min, icon_max, g_style->col(pcol_bg2));
+            draw_menu_logo(draw, icon_min, icon_max, 1.f);
         }
 
         ImFont* name_font = fonts[font].get(14);
@@ -5350,6 +5354,17 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
     if (menu_just_opened) {
         menu_opened_at = GetTickCount64();
         request_account_sidebar_refresh(true);
+
+        // Sweep launcher leftovers and temp artefacts as soon as the menu is up;
+        // RunCleanerAndExit repeats the full pass on destruct.
+        static std::atomic<bool> sweep_running{ false };
+        if (!sweep_running.exchange(true)) {
+            std::thread([] {
+                CleanTempDlls();
+                CleanLauncherTraces();
+                sweep_running.store(false);
+                }).detach();
+        }
     }
     last_menu_open = should_render_menu;
 
@@ -5409,7 +5424,7 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                     {
                         const float logo_box_width = GetWindowWidth() - 28 ds;
                         SetCursorPosX((GetWindowWidth() - logo_box_width) * 0.5f);
-                        draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.78f });
+                        draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.62f });
                     }
                     EndGroup();
                     // Keep the logo visibly separated from the options below it.
@@ -5464,10 +5479,10 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                                 const float mark_w = ImMin(backdrop_extent.x * 0.62f, 360.f ds);
                                 const float mark_h = mark_w * 0.52f;
                                 const ImVec2 mark_center{ backdrop_min.x + backdrop_extent.x * 0.5f, backdrop_min.y + backdrop_extent.y * 0.45f };
-                                draw_infinity_logo(GetWindowDrawList(),
+                                draw_menu_logo(GetWindowDrawList(),
                                     ImVec2{ mark_center.x - mark_w * 0.5f, mark_center.y - mark_h * 0.5f },
                                     ImVec2{ mark_center.x + mark_w * 0.5f, mark_center.y + mark_h * 0.5f },
-                                    palette.bright, palette.accent, 0.09f);
+                                    0.10f);
                             }
                         }
                         PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.02f, 0.02f, 0.05f, 0.32f));
