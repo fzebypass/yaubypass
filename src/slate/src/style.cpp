@@ -38,7 +38,7 @@ void c_style::setup( ) {
         themes[0].colors[pcol_bg4] = pcolor{ 23, 23, 29, 1.00f };
 		themes[0].colors[pcol_bg5] = pcolor{ 232, 232, 232, 1.00f };
 		themes[0].colors[pcol_bg6] = pcolor{ 15, 15, 15, 1.00f };
-        themes[0].colors[pcol_border] = pcolor{ 210, 190, 255, 0.07f };
+        themes[0].colors[pcol_border] = pcolor{ 255, 198, 204, 0.07f };
         themes[0].colors[pcol_scheme] = pcolor{ 199, 199, 199, 1.00f };
         themes[0].colors[pcol_text] = pcolor{ 231, 231, 231, 1.00f };
         themes[0].colors[pcol_text2] = pcolor{ 76, 76, 76, 1.00f };

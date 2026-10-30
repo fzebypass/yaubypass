@@ -267,21 +267,20 @@ namespace {
     }
 
     const seasonal_menu_palette_t& get_menu_palette(const menu_season_t) {
-        // The menu palette follows the animated infinity mark: a white core inside a
-        // saturated violet halo, sitting on a near-black violet-tinted surface.
+        // The menu palette follows the lily artwork: deep red accents on black.
         static const seasonal_menu_palette_t logo{
             "Dynamic",
-            pcolor{ 139, 92, 246, 1.0f },
-            pcolor{ 186, 148, 255, 1.0f },
-            pcolor{ 238, 232, 255, 1.0f },
-            pcolor{ 240, 236, 255, 1.0f },
-            pcolor{ 158, 150, 190, 1.0f },
-            pcolor{ 158, 150, 190, 0.60f },
+            pcolor{ 214, 32, 54, 1.0f },
+            pcolor{ 236, 96, 112, 1.0f },
+            pcolor{ 255, 228, 232, 1.0f },
+            pcolor{ 245, 238, 239, 1.0f },
+            pcolor{ 180, 165, 168, 1.0f },
+            pcolor{ 180, 165, 168, 0.60f },
             pcolor{ 255, 255, 255, 0.06f },
             pcolor{ 255, 255, 255, 0.04f },
-            pcolor{ 58, 32, 110, 0.22f },
-            pcolor{ 139, 92, 246, 1.0f },
-            pcolor{ 240, 232, 255, 1.0f }
+            pcolor{ 110, 20, 32, 0.22f },
+            pcolor{ 214, 32, 54, 1.0f },
+            pcolor{ 255, 232, 236, 1.0f }
         };
 
         return logo;
@@ -5410,7 +5409,7 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                     {
                         const float logo_box_width = GetWindowWidth() - 28 ds;
                         SetCursorPosX((GetWindowWidth() - logo_box_width) * 0.5f);
-                        draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.58f });
+                        draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.78f });
                     }
                     EndGroup();
                     // Keep the logo visibly separated from the options below it.

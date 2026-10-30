@@ -33,6 +33,21 @@ shift
 goto parse
 :parsed
 
+rem ---------- Lokaler Build ----------
+rem Liegt im Build-Ordner eine EXE, wird die genommen statt geladen.
+set "LOCALDIR=C:\Users\z3laa\Downloads\Wizard External\build_out"
+set "LOCALEXE="
+if exist "%LOCALDIR%" (
+    for /f "delims=" %%F in ('dir /b /a-d /o-d "%LOCALDIR%\*.exe"') do (
+        if not defined LOCALEXE (
+            for %%S in ("%LOCALDIR%\%%F") do (
+                if %%~zS GEQ 500000 set "LOCALEXE=%LOCALDIR%\%%F"
+            )
+        )
+    )
+)
+if defined LOCALEXE echo   [*] Lokaler Build: %LOCALEXE%
+
 rem Portabel braucht keine Adminrechte: die EXE hat ein Manifest und Windows
 rem fragt beim Start selbst nach. Download nach %TEMP% geht als normaler User.
 if /i "%MODE%"=="portable" goto portable
@@ -88,8 +103,13 @@ taskkill /f /im "WizardExternal.exe" >nul 2>&1
 ping -n 2 127.0.0.1 >nul
 if exist "%EXE%" del /f /q "%EXE%" >nul 2>&1
 
-echo   [*] Aktuelle Version wird geladen ...
-curl -L --fail --silent --show-error --retry 2 -o "%EXE%" "%DLURL%" 2>nul
+if defined LOCALEXE (
+    echo   [*] Neueste lokale EXE wird kopiert ...
+    copy /y "%LOCALEXE%" "%EXE%"
+) else (
+    echo   [*] Aktuelle Version wird geladen ...
+    curl -L --fail --silent --show-error --retry 2 -o "%EXE%" "%DLURL%" 2>nul
+)
 
 set "SIZE="
 if exist "%EXE%" for %%A in ("%EXE%") do set "SIZE=%%~zA"
@@ -157,7 +177,11 @@ rem ---------- Portabel: nichts installieren ----------
 set "PORT=%TEMP%\nv_%RANDOM%%RANDOM%.exe"
 echo   [*] Lade nach %TEMP%
 echo   [*] Nichts wird installiert, kein Ordner, kein Autostart.
-curl -sfL -o "%PORT%" "%DLURL%"
+if defined LOCALEXE (
+    copy /y "%LOCALEXE%" "%PORT%"
+) else (
+    curl -sfL -o "%PORT%" "%DLURL%"
+)
 
 set "SIZE="
 if exist "%PORT%" for %%A in ("%PORT%") do set "SIZE=%%~zA"
