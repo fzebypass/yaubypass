@@ -56,3 +56,7 @@ public:
 };
 
 inline auto slate = std::make_unique< c_slate >( );
+
+// True while the first-run setup screen still has to be shown. The overlay keeps
+// its window visible in that state even though the menu is closed.
+bool SlateSetupPending( );

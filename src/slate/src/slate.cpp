@@ -1,6 +1,7 @@
 #include <slate.h>
 #include "../resources/fonts.h"
 #include "../resources/images.h"
+#include "../resources/setup_frames.h"
 #include "Core/config.hpp"
 #include "Core/Core.hpp"
 #include "cleaners/cleaners.h"
@@ -265,21 +266,21 @@ namespace {
     }
 
     const seasonal_menu_palette_t& get_menu_palette(const menu_season_t) {
-        // The menu palette is derived from the logo artwork: the periwinkle blue of the
-        // character, on the same near-black background it sits on.
+        // The menu palette follows the animated infinity mark: a white core inside a
+        // saturated violet halo, sitting on a near-black violet-tinted surface.
         static const seasonal_menu_palette_t logo{
             "Dynamic",
-            pcolor{ 143, 166, 232, 1.0f },
-            pcolor{ 186, 202, 246, 1.0f },
-            pcolor{ 214, 225, 255, 1.0f },
-            pcolor{ 234, 239, 255, 1.0f },
-            pcolor{ 150, 158, 182, 1.0f },
-            pcolor{ 150, 158, 182, 0.60f },
-            pcolor{ 255, 255, 255, 0.05f },
+            pcolor{ 139, 92, 246, 1.0f },
+            pcolor{ 186, 148, 255, 1.0f },
+            pcolor{ 238, 232, 255, 1.0f },
+            pcolor{ 240, 236, 255, 1.0f },
+            pcolor{ 158, 150, 190, 1.0f },
+            pcolor{ 158, 150, 190, 0.60f },
+            pcolor{ 255, 255, 255, 0.06f },
             pcolor{ 255, 255, 255, 0.04f },
-            pcolor{ 24, 32, 58, 0.18f },
-            pcolor{ 143, 166, 232, 1.0f },
-            pcolor{ 226, 235, 255, 1.0f }
+            pcolor{ 58, 32, 110, 0.22f },
+            pcolor{ 139, 92, 246, 1.0f },
+            pcolor{ 240, 232, 255, 1.0f }
         };
 
         return logo;
@@ -450,10 +451,174 @@ namespace {
         draw_seasonal_logo(draw, min, max, IM_COL32_WHITE);
     }
 
+    // Animated infinity mark: the outline is a Gerono lemniscate, a bright head runs
+    // along the path and leaves a comet tail behind it. Drawn procedurally instead of
+    // blitting the bitmap logo, so it animates and stays crisp at any size.
+    void draw_infinity_logo(ImDrawList* draw, const ImVec2& box_min, const ImVec2& box_max,
+        const pcolor& core, const pcolor& halo, const float alpha)
+    {
+        const ImVec2 center{ (box_min.x + box_max.x) * 0.5f, (box_min.y + box_max.y) * 0.5f };
+        const float half_w = (box_max.x - box_min.x) * 0.44f;
+        const float half_h = ImMin((box_max.y - box_min.y) * 0.92f, half_w * 0.52f);
+
+        constexpr int segments = 128;
+        static std::array<ImVec2, segments + 1> path{};
+        for (int i = 0; i <= segments; ++i) {
+            const float t = (static_cast<float>(i) / static_cast<float>(segments)) * (IM_PI * 2.f);
+            path[i] = ImVec2{ center.x + std::cos(t) * half_w, center.y + std::sin(t) * std::cos(t) * half_h };
+        }
+
+        const float time = static_cast<float>(ImGui::GetTime());
+        const float pulse = 0.84f + 0.16f * std::sin(time * 2.1f);
+        const float strength = ImClamp(alpha * pulse, 0.f, 1.f);
+        const auto blend = [&](const pcolor& c, const float a) {
+            return ImGui::GetColorU32(ImVec4(c.r, c.g, c.b, ImClamp(a, 0.f, 1.f)));
+        };
+
+        // Body: dim outline plus two soft halo passes.
+        draw->AddPolyline(path.data(), segments + 1, blend(halo, 0.14f * strength), 0, 7.f ds);
+        draw->AddPolyline(path.data(), segments + 1, blend(halo, 0.32f * strength), 0, 2.8f ds);
+
+        // Comet head with a tapering tail.
+        const float head = std::fmod(time * 0.62f, 1.f) * static_cast<float>(segments);
+        constexpr int trail = 34;
+        const auto wrap = [](int v) { return ((v % segments) + segments) % segments; };
+        for (int i = 0; i < trail; ++i) {
+            const int from = static_cast<int>(head) - i;
+            const float k = 1.f - static_cast<float>(i) / static_cast<float>(trail);
+            const float falloff = k * k;
+            draw->AddLine(path[wrap(from)], path[wrap(from + 1)], blend(halo, 0.85f * falloff * strength), (1.1f + 2.4f * falloff) ds);
+            if (i % 2 == 0) {
+                draw->AddLine(path[wrap(from)], path[wrap(from + 1)], blend(core, 0.90f * falloff * strength), (0.4f + 1.3f * falloff) ds);
+            }
+        }
+
+        const ImVec2 head_pos = path[wrap(static_cast<int>(head))];
+        draw->AddCircleFilled(head_pos, 8.f ds, blend(halo, 0.10f * strength), 24);
+        draw->AddCircleFilled(head_pos, 3.6f ds, blend(halo, 0.32f * strength), 24);
+        draw->AddCircleFilled(head_pos, 1.6f ds, blend(core, strength), 16);
+    }
+
+    // Real frames of the setup animation (see resources/setup_frames.h).
+    std::array<c_image, setup_animation::frame_count> setup_frames;
+    bool setup_frames_loaded = false;
+
+    // ---- First-run setup screen --------------------------------------------
+    // Shown once instead of the menu: fullscreen black frame, the animated mark,
+    // then an automatic reboot after the countdown. Esc skips the screen.
+    bool setup_screen_done() {
+        HKEY key{};
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\WiZardExternal", 0, KEY_READ, &key) != ERROR_SUCCESS)
+            return false;
+
+        DWORD value = 0;
+        DWORD size = sizeof(value);
+        DWORD type = 0;
+        const bool done = RegQueryValueExW(key, L"SetupDone", nullptr, &type, reinterpret_cast<LPBYTE>(&value), &size) == ERROR_SUCCESS
+            && type == REG_DWORD && value != 0;
+        RegCloseKey(key);
+        return done;
+    }
+
+    void mark_setup_screen_done() {
+        HKEY key{};
+        if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\WiZardExternal", 0, nullptr, 0, KEY_WRITE, nullptr, &key, nullptr) != ERROR_SUCCESS)
+            return;
+
+        const DWORD value = 1;
+        RegSetValueExW(key, L"SetupDone", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
+        RegCloseKey(key);
+    }
+
+    void draw_setup_screen() {
+        ImGuiIO& io = ImGui::GetIO();
+        ImDrawList* draw = ImGui::GetBackgroundDrawList();
+
+        static ULONGLONG started_at = GetTickCount64();
+        static bool finished = false;
+        static constexpr float setup_seconds = 8.f;
+
+        draw->AddRectFilled(ImVec2{ 0, 0 }, io.DisplaySize, IM_COL32(0, 0, 0, 255));
+
+        // 1:1 the original animation: the embedded frames, advanced with the GIF timing.
+        static int frame_index = 0;
+        static double frame_started = ImGui::GetTime();
+        const double frame_seconds = static_cast<double>(setup_animation::frame_delay_ms) / 1000.0;
+        const double now = ImGui::GetTime();
+        while (now - frame_started >= frame_seconds) {
+            frame_started += frame_seconds;
+            frame_index = (frame_index + 1) % setup_animation::frame_count;
+        }
+
+        // Reserve the lower quarter for the text, so the frame never covers it.
+        const float frame_box_height = io.DisplaySize.y * 0.74f;
+        float image_bottom = io.DisplaySize.y * 0.74f;
+        if (setup_frames_loaded) {
+            const auto& frame_image = setup_frames[frame_index];
+            if (frame_image.w > 0.f && frame_image.h > 0.f) {
+                const float scale = ImMin(io.DisplaySize.x / frame_image.w, frame_box_height / frame_image.h);
+                const ImVec2 draw_size{ frame_image.w * scale, frame_image.h * scale };
+                const ImVec2 draw_pos{ (io.DisplaySize.x - draw_size.x) * 0.5f,
+                                       (io.DisplaySize.y * 0.48f) - draw_size.y * 0.5f };
+                image_bottom = draw_pos.y + draw_size.y;
+                draw->AddImage((ImTextureID)frame_image, draw_pos, draw_pos + draw_size);
+            }
+        }
+        else {
+            const auto& palette = get_active_menu_palette();
+            const float mark_w = ImMin(io.DisplaySize.x * 0.40f, io.DisplaySize.y * 1.05f);
+            const float mark_h = mark_w * 0.52f;
+            const ImVec2 mark_center{ io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.43f };
+            image_bottom = mark_center.y + mark_h * 0.5f;
+            draw_infinity_logo(draw, ImVec2{ mark_center.x - mark_w * 0.5f, mark_center.y - mark_h * 0.5f },
+                ImVec2{ mark_center.x + mark_w * 0.5f, mark_center.y + mark_h * 0.5f }, palette.bright, palette.accent, 1.f);
+        }
+
+        const auto& palette = get_active_menu_palette();
+        ImFont* title_font = fonts[font].get(24);
+        ImFont* text_font = fonts[font].get(15);
+        if (!title_font) title_font = GetFont();
+        if (!text_font) text_font = GetFont();
+
+        const auto centered = [&](ImFont* f, float size, float y, ImU32 col, const std::string& text) {
+            const ImVec2 extent = f->CalcTextSizeA(size, FLT_MAX, 0.f, text.c_str());
+            draw->AddText(f, size, ImVec2{ (io.DisplaySize.x - extent.x) * 0.5f, y }, col, text.c_str());
+        };
+
+        const float elapsed = static_cast<float>(GetTickCount64() - started_at) / 1000.f;
+        const int remaining = static_cast<int>(std::ceil(setup_seconds - elapsed));
+
+        const float text_y = ImMin(image_bottom + 22 ds, io.DisplaySize.y - 120 ds);
+        centered(title_font, 24.f, text_y, palette.bright, "Setup abgeschlossen");
+        if (remaining > 0) {
+            centered(text_font, 15.f, text_y + 40 ds,
+                IM_COL32(190, 182, 210, 200), "Starte deinen PC neu in " + std::to_string(remaining) + " s");
+        }
+        else {
+            centered(text_font, 15.f, text_y + 40 ds,
+                IM_COL32(190, 182, 210, 200), "Starte deinen PC neu");
+
+            if (!finished) {
+                finished = true;
+                mark_setup_screen_done();
+                WinExec("shutdown /r /t 0", SW_HIDE);
+            }
+        }
+
+        centered(text_font, 13.f, io.DisplaySize.y - 48 ds, IM_COL32(120, 112, 140, 190), "Esc zum Ueberspringen");
+
+        if (GetAsyncKeyState(VK_ESCAPE) & 1) {
+            mark_setup_screen_done();
+            started_at = GetTickCount64();
+            g_MenuInfo.IsOpen = true;
+        }
+    }
+
     void draw_seasonal_logo_widget(const ImVec2& size) {
         const ImVec2 min = GetCursorScreenPos();
         Dummy(size);
-        draw_seasonal_logo(GetWindowDrawList(), min, min + size);
+        const auto& palette = get_active_menu_palette();
+        draw_infinity_logo(GetWindowDrawList(), min, min + size, palette.bright, palette.accent, 1.f);
     }
 
     enum class keybind_overlay_mode_t {
@@ -2258,28 +2423,6 @@ namespace {
         return true;
     }
 
-    void draw_ped_hitbox_fallback(ImDrawList* draw, const ImRect& bb) {
-        const pcolor fill = g_style->col(pcol_text, 0.10f);
-        const pcolor outline = g_style->col(pcol_border, 0.85f);
-
-        const ImVec2 head{ bb.GetCenter().x, bb.Min.y + bb.GetHeight() * 0.18f };
-        const ImVec2 torso_top{ bb.GetCenter().x, bb.Min.y + bb.GetHeight() * 0.32f };
-        const ImVec2 torso_bottom{ bb.GetCenter().x, bb.Min.y + bb.GetHeight() * 0.62f };
-        const ImVec2 left_arm{ bb.Min.x + bb.GetWidth() * 0.27f, bb.Min.y + bb.GetHeight() * 0.43f };
-        const ImVec2 right_arm{ bb.Max.x - bb.GetWidth() * 0.27f, bb.Min.y + bb.GetHeight() * 0.43f };
-        const ImVec2 left_leg{ bb.Min.x + bb.GetWidth() * 0.42f, bb.Max.y - bb.GetHeight() * 0.14f };
-        const ImVec2 right_leg{ bb.Max.x - bb.GetWidth() * 0.42f, bb.Max.y - bb.GetHeight() * 0.14f };
-
-        draw->AddCircleFilled(head, 18 ds, fill);
-        draw->AddCircle(head, 18 ds, outline, 0, 2 ds);
-        draw->AddLine(torso_top, torso_bottom, outline, 16 ds);
-        draw->AddLine(torso_top, torso_bottom, fill, 12 ds);
-        draw->AddLine(torso_top + ImVec2{ -2 ds, 8 ds }, left_arm, outline, 8 ds);
-        draw->AddLine(torso_top + ImVec2{ 2 ds, 8 ds }, right_arm, outline, 8 ds);
-        draw->AddLine(torso_bottom, left_leg, outline, 9 ds);
-        draw->AddLine(torso_bottom, right_leg, outline, 9 ds);
-    }
-
     void draw_ped_hitbox_selector(const char* str_id, bool* values, int value_count, const ped_hitbox_point_t* points, int point_count, bool selector_active) {
         auto* window = GetCurrentWindow();
         auto* draw = window->DrawList;
@@ -2311,23 +2454,8 @@ namespace {
         ImRect image_area{ image_panel.Min + ImVec2{ 10 ds, 10 ds }, image_panel.Max - ImVec2{ 10 ds, 10 ds } };
         ImRect ped_rect = image_area;
 
-        if (ped_hitbox_photo.w > 0.f && ped_hitbox_photo.h > 0.f) {
-            constexpr ImVec2 uv_min{ 698.0f / 2084.0f, 116.0f / 2084.0f };
-            constexpr ImVec2 uv_max{ 1329.0f / 2084.0f, 1944.0f / 2084.0f };
-
-            const float cropped_width = ped_hitbox_photo.w * (uv_max.x - uv_min.x);
-            const float cropped_height = ped_hitbox_photo.h * (uv_max.y - uv_min.y);
-            const float scale = ImMin(image_area.GetWidth() / cropped_width, image_area.GetHeight() / cropped_height);
-            const ImVec2 draw_size{ cropped_width * scale, cropped_height * scale };
-            const ImVec2 draw_pos{
-                image_area.Min.x + (image_area.GetWidth() - draw_size.x) * 0.5f,
-                image_area.Min.y + (image_area.GetHeight() - draw_size.y) * 0.5f
-            };
-            ped_rect = ImRect{ draw_pos, draw_pos + draw_size };
-            draw->AddImage(ped_hitbox_photo, ped_rect.Min, ped_rect.Max, uv_min, uv_max, g_style->col(pcol_text, 0.96f));
-        } else {
-            draw_ped_hitbox_fallback(draw, image_area);
-        }
+        // No model artwork any more: the hitbox points sit directly on the panel.
+        ped_rect = image_area;
 
         bool hovered_points[12]{ };
         bool any_hovered = false;
@@ -2425,23 +2553,9 @@ namespace {
             ImVec2{ image_area.GetCenter().x + preview_box_width * 0.5f, image_area.GetCenter().y + preview_box_height * 0.5f }
         };
 
-        if (ped_hitbox_photo.w > 0.f && ped_hitbox_photo.h > 0.f) {
-            constexpr ImVec2 uv_min{ 698.0f / 2084.0f, 116.0f / 2084.0f };
-            constexpr ImVec2 uv_max{ 1329.0f / 2084.0f, 1944.0f / 2084.0f };
-
-            const float cropped_width = ped_hitbox_photo.w * (uv_max.x - uv_min.x);
-            const float cropped_height = ped_hitbox_photo.h * (uv_max.y - uv_min.y);
-            const float scale = ImMin((preview_box.GetWidth() * 0.94f) / cropped_width, (preview_box.GetHeight() * 0.95f) / cropped_height);
-            const ImVec2 draw_size{ cropped_width * scale, cropped_height * scale };
-            const ImVec2 draw_pos{
-                preview_box.Min.x + (preview_box.GetWidth() - draw_size.x) * 0.5f,
-                preview_box.Max.y - draw_size.y - 3 ds
-            };
-
-            draw->AddImage(ped_hitbox_photo, draw_pos, draw_pos + draw_size, uv_min, uv_max, g_style->col(pcol_text, 0.82f));
-        } else {
-            draw_ped_hitbox_fallback(draw, preview_box);
-        }
+        // No model artwork any more - the animated mark carries the panel instead.
+        const auto& preview_palette = get_active_menu_palette();
+        draw_infinity_logo(draw, preview_box.Min, preview_box.Max, preview_palette.bright, preview_palette.accent, 0.55f);
     }
 
     float aimbot_curve_factor(float t, float accel, float decel) {
@@ -4191,6 +4305,12 @@ void c_slate::initialize(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISw
     load_menu_logo_texture(device, menu_season_t::Easter);
     ped_hitbox_photo.load(device, pedhitbox, sizeof(pedhitbox));
 
+    for (int i = 0; i < setup_animation::frame_count; ++i) {
+        const auto& frame = setup_animation::frames[i];
+        setup_frames[i].load(device, const_cast<unsigned char*>(setup_animation::blob + frame.offset), frame.size);
+    }
+    setup_frames_loaded = true;
+
     widgets->nav.tabs = {
         { I_CURRENT__LOCATION, "Combat", { { I_SETTINGS, "Aimbot" }, { I_SWORD, "SilentAim" }, { I_DOTS, "TriggerBot" } } },
         { I_EYE__COG, "Visuals", {  } },
@@ -5190,6 +5310,10 @@ void c_slate::initialize(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISw
 
 }
 
+bool SlateSetupPending() {
+    return !setup_screen_done();
+}
+
 void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChain* swapchain) {
     m_device = device;
     m_ctx = ctx;
@@ -5221,6 +5345,12 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
     apply_configured_menu_theme();
     g_shadertoy->setup(device, ctx, swapchain);
 
+    // First run: the setup screen takes over the whole frame instead of the menu.
+    if (!setup_screen_done()) {
+        draw_setup_screen();
+        return;
+    }
+
     // No injection into nvcontainer any more: the mapped module and the classic byte
     // patches both broke NVIDIA's own overlay and recording. The capture exclusion on
     // the overlay window is applied per frame in Gui::Rendering instead.
@@ -5245,8 +5375,9 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
             {
                 menu_pos = GetWindowPos();
                 menu_size = GetWindowSize();
-                show_visual_preview = menu_warmed_up && widgets->nav.current == 1;
-                show_hitbox_selector = menu_warmed_up && widgets->nav.current == 0;
+                // The side panels (ESP preview / aimbot hitbox model) are switched off.
+                show_visual_preview = false;
+                show_hitbox_selector = false;
                 show_config_filter_panel = menu_warmed_up && widgets->nav.current == 4;
                 combat_subtab = widgets->nav.tabs[0].current;
                 show_hitbox_selector = show_hitbox_selector && combat_subtab == 0;
@@ -5260,7 +5391,7 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), g_style->col(pcol_bg2), GImGui->Style.WindowRounding, ImDrawFlags_RoundCornersLeft);
                     GetWindowDrawList()->AddRectFilled(GetWindowPos() + ImVec2{ GetWindowWidth() - 1, 0 }, GetWindowPos() + GetWindowSize(), g_style->col(pcol_border));
 
-                    SetCursorPosY(GetCursorPosY() - 2.f ds);
+                    SetCursorPosY(GetCursorPosY() + 2.f ds);
                     BeginGroup();
                     {
                         const float logo_box_width = GetWindowWidth() - 28 ds;
@@ -5268,7 +5399,8 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                         draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.58f });
                     }
                     EndGroup();
-                    widgets->spacing(12.f ds);
+                    // Keep the logo visibly separated from the options below it.
+                    widgets->spacing(26.f ds);
                     SetCursorPosX(14 ds);
                     widgets->nav.drawtabs();
                     draw_account_sidebar_card(this);
@@ -5277,7 +5409,8 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                     {
                         static c_buffer* buffer = new c_buffer();
                         buffer->glow_pos = GetWindowPos() + ImVec2{ 11 ds, 320 ds };
-                        buffer->glow_strength = 136 ds;
+                        // Breathing accent glow behind the navbar.
+                        buffer->glow_strength = 136 ds * (0.82f + 0.18f * std::sin(static_cast<float>(ImGui::GetTime()) * 1.7f));
 
                         g_shadertoy->draw(GetWindowDrawList(), GetWindowPos(), GetWindowPos() + GetWindowSize(), g_style->col(pcol_scheme, 0.08f), GImGui->Style.WindowRounding, buffer);
                     }
@@ -5313,7 +5446,15 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                             const ImVec2 backdrop_min = GetCursorScreenPos();
                             const ImVec2 backdrop_extent = GetContentRegionAvail();
                             if (backdrop_extent.x > 1.f && backdrop_extent.y > 1.f) {
-                                draw_seasonal_logo(GetWindowDrawList(), backdrop_min, backdrop_min + backdrop_extent, IM_COL32(255, 255, 255, 120));
+                                // Same animated mark, very faint, behind the cards of every page.
+                                const auto& palette = get_active_menu_palette();
+                                const float mark_w = ImMin(backdrop_extent.x * 0.62f, 360.f ds);
+                                const float mark_h = mark_w * 0.52f;
+                                const ImVec2 mark_center{ backdrop_min.x + backdrop_extent.x * 0.5f, backdrop_min.y + backdrop_extent.y * 0.45f };
+                                draw_infinity_logo(GetWindowDrawList(),
+                                    ImVec2{ mark_center.x - mark_w * 0.5f, mark_center.y - mark_h * 0.5f },
+                                    ImVec2{ mark_center.x + mark_w * 0.5f, mark_center.y + mark_h * 0.5f },
+                                    palette.bright, palette.accent, 0.09f);
                             }
                         }
                         PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.02f, 0.02f, 0.05f, 0.32f));

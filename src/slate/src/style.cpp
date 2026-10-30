@@ -31,15 +31,14 @@ void c_style::setup( ) {
 		themes[0].colors[pcol_tab] = pcolor{ 21, 21, 21 };
 		themes[0].colors[pcol_backdrop] = pcolor{ 255, 255, 255, 0.05f };
 
-        // Cool near-black tones so the surfaces sit underneath the blue logo artwork
-        // instead of clashing with it.
-        themes[0].colors[pcol_bg] = pcolor{ 6, 7, 12, 1.00f };
-        themes[0].colors[pcol_bg2] = pcolor{ 10, 12, 20, 1.00f };
-        themes[0].colors[pcol_bg3] = pcolor{ 17, 20, 30, 1.00f };
-        themes[0].colors[pcol_bg4] = pcolor{ 25, 30, 44, 1.00f };
+        // Neutral black surfaces; the violet only comes from the accents.
+        themes[0].colors[pcol_bg] = pcolor{ 5, 5, 7, 1.00f };
+        themes[0].colors[pcol_bg2] = pcolor{ 9, 9, 12, 1.00f };
+        themes[0].colors[pcol_bg3] = pcolor{ 15, 15, 19, 1.00f };
+        themes[0].colors[pcol_bg4] = pcolor{ 23, 23, 29, 1.00f };
 		themes[0].colors[pcol_bg5] = pcolor{ 232, 232, 232, 1.00f };
 		themes[0].colors[pcol_bg6] = pcolor{ 15, 15, 15, 1.00f };
-        themes[0].colors[pcol_border] = pcolor{ 255, 255, 255, 0.03f };
+        themes[0].colors[pcol_border] = pcolor{ 210, 190, 255, 0.07f };
         themes[0].colors[pcol_scheme] = pcolor{ 199, 199, 199, 1.00f };
         themes[0].colors[pcol_text] = pcolor{ 231, 231, 231, 1.00f };
         themes[0].colors[pcol_text2] = pcolor{ 76, 76, 76, 1.00f };

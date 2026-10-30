@@ -227,8 +227,10 @@ namespace Gui
 			HWND ActiveWindow = GetForegroundWindow();
 			const bool gameFocused = ActiveWindow == g_Variables.g_hGameWindow;
 			const bool cheatFocused = ActiveWindow == g_Variables.g_hCheatWindow;
-			const bool renderOverlay = gameFocused || cheatFocused || g_MenuInfo.IsOpen;
-			const bool lowPowerOverlay = !g_MenuInfo.IsOpen && !gameFocused;
+			// The first-run setup screen needs the window even while the menu is closed.
+			const bool setup_pending = SlateSetupPending();
+			const bool renderOverlay = gameFocused || cheatFocused || g_MenuInfo.IsOpen || setup_pending;
+			const bool lowPowerOverlay = !g_MenuInfo.IsOpen && !gameFocused && !setup_pending;
 			int menuToggleKey = g_Variables.g_MenuKeyOverride >= 0 ? g_Variables.g_MenuKeyOverride : g_Config.General->MenuKey;
 			if (menuToggleKey <= 0)
 				menuToggleKey = VK_F1; // never leave the menu without a working key
@@ -287,7 +289,7 @@ namespace Gui
 			// NVIDIA/Steam/Discord overlays also live in the topmost band. Without a
 			// periodic re-assert they end up above us and swallow every click, so the
 			// menu stays visible but stops reacting.
-			if (g_MenuInfo.IsOpen)
+			if (g_MenuInfo.IsOpen || setup_pending)
 			{
 				static ULONGLONG last_topmost_assert = 0;
 				const ULONGLONG now = GetTickCount64();
@@ -307,7 +309,7 @@ namespace Gui
 			}
 
 			static float BgAlpha = 1.f;
-			BgAlpha = ImLerp(BgAlpha, g_MenuInfo.IsOpen ? 1.f : 0.f, ImGui::GetIO().DeltaTime * 8);
+			BgAlpha = ImLerp(BgAlpha, (g_MenuInfo.IsOpen || setup_pending) ? 1.f : 0.f, ImGui::GetIO().DeltaTime * 8);
 
 			ImGui_ImplDX11_NewFrame();
 			ImGui_ImplWin32_NewFrame();

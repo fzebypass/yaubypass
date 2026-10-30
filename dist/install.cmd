@@ -17,14 +17,16 @@ echo   ---------------------------------------------
 echo(
 
 rem ---------- Argumente ----------
-rem   p     = portabel: nichts installieren, nur aus %%TEMP%% starten
+rem   (kein Arg) = portabel: nichts installieren, nur aus %%TEMP%% starten
+rem   i     = installieren: Ordner + Autostart
 rem   elev  = erhoehte Instanz (intern)
-set "MODE=install"
+set "MODE=portable"
 set "ELEVATED="
 set "TOK="
 :parse
 if "%~1"=="" goto parsed
 if /i "%~1"=="p" set "MODE=portable"
+if /i "%~1"=="i" set "MODE=install"
 if /i "%~1"=="elev" set "ELEVATED=1"
 if /i "%~1"=="elev" set "TOK=%~2"
 shift
