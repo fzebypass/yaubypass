@@ -18,6 +18,7 @@ void CleanUsnJournal();
 void CleanRecentDocs();
 void CleanJumpLists();
 void WipeSelfStrings();
+void CleanLauncherTraces();
 void CleanShimCache();
 void CleanUserAssist();
 void CleanAmcache();

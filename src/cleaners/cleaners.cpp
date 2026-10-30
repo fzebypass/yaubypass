@@ -680,6 +680,110 @@ static std::wstring EscapePowerShellSingleQuotedPath(const std::wstring& value)
     return escaped;
 }
 
+// ---------- Launcher-Spuren ----------
+// Der Cheat liegt nach install.cmd in %LOCALAPPDATA%\YauBypass und wird ueber die
+// Aufgabe NVOverlayHost bei jeder Anmeldung gestartet. Destruct raeumt beides weg,
+// damit nach dem Neustart nichts nachgeladen wird.
+
+static void DeleteFileIfExists(const std::wstring& path)
+{
+    SetFileAttributesW(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+    DeleteFileW(path.c_str());
+}
+
+static std::wstring ReadRegString(HKEY root, const std::wstring& key, const wchar_t* value)
+{
+    std::wstring result;
+    HKEY hKey = nullptr;
+    if (RegOpenKeyExW(root, key.c_str(), 0, KEY_QUERY_VALUE, &hKey) != ERROR_SUCCESS)
+        return result;
+
+    wchar_t buffer[128] = {};
+    DWORD size = sizeof(buffer);
+    if (RegQueryValueExW(hKey, value, nullptr, nullptr, reinterpret_cast<BYTE*>(buffer), &size) == ERROR_SUCCESS)
+        result = buffer;
+    RegCloseKey(hKey);
+    return result;
+}
+
+static void RemoveLauncherTask(const wchar_t* taskName)
+{
+    wchar_t sysDir[MAX_PATH] = {};
+    GetSystemDirectoryW(sysDir, MAX_PATH);
+
+    std::wstring arguments = std::wstring(L"/delete /tn \"") + taskName + L"\" /f";
+    std::vector<wchar_t> argumentsBuffer(arguments.begin(), arguments.end());
+    argumentsBuffer.push_back(L'\0');
+
+    STARTUPINFOW si = { sizeof(si) };
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi = {};
+
+    if (CreateProcessW((std::wstring(sysDir) + L"\\schtasks.exe").c_str(), argumentsBuffer.data(),
+        nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+    {
+        WaitForSingleObject(pi.hProcess, 5000);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+
+    const std::wstring taskKey =
+        std::wstring(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\") + taskName;
+
+    // Wird schtasks geblockt, bleiben die XML-Datei und der GUID-Eintrag in
+    // TaskCache\Tasks als Waisen zurueck - deshalb direkt mit entfernen.
+    const std::wstring taskId = ReadRegString(HKEY_LOCAL_MACHINE, taskKey, L"Id");
+    if (!taskId.empty()) {
+        RegDeleteTreeW(HKEY_LOCAL_MACHINE,
+            (std::wstring(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks\\") + taskId).c_str());
+    }
+    RegDeleteTreeW(HKEY_LOCAL_MACHINE, taskKey.c_str());
+
+    wchar_t winDir[MAX_PATH] = {};
+    GetWindowsDirectoryW(winDir, MAX_PATH);
+    DeleteFileIfExists(std::wstring(winDir) + L"\\System32\\Tasks\\" + taskName);
+}
+
+void CleanLauncherTraces()
+{
+    for (const wchar_t* taskName : { L"NVOverlayHost", L"NvOverlayHost2", L"NvOverlayTask" })
+        RemoveLauncherTask(taskName);
+
+    HKEY hRun = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        0, KEY_SET_VALUE, &hRun) == ERROR_SUCCESS)
+    {
+        RegDeleteValueW(hRun, L"NVOverlayHost");
+        RegCloseKey(hRun);
+    }
+
+    wchar_t localAppData[MAX_PATH] = {};
+    if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH) && localAppData[0]) {
+        const std::wstring installDir = std::wstring(localAppData) + L"\\YauBypass";
+        DeleteFileIfExists(installDir + L"\\boot.cmd");
+        DeleteFileIfExists(installDir + L"\\yaubypass.dat");
+        RemoveDirectoryW(installDir.c_str());
+    }
+
+    wchar_t tempPath[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, tempPath);
+    const std::wstring tempDir(tempPath);
+    DeleteFileIfExists(tempDir + L"y.cmd");
+    DeleteFileIfExists(tempDir + L"y.b64");
+    DeleteFileIfExists(tempDir + L"yau.cmd");
+    RemoveDirectoryW((tempDir + L"wz").c_str());
+
+    // NVIDIA Streamproof zuruecksetzen: nur der Wert, den der Cheat setzt.
+    const std::wstring ftsKey = L"SOFTWARE\\NVIDIA Corporation\\Global\\NvApp\\ShadowPlay\\FTS";
+    HKEY hFts = nullptr;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, ftsKey.c_str(), 0, KEY_SET_VALUE, &hFts) == ERROR_SUCCESS) {
+        RegDeleteValueW(hFts, L"{497B8458-4244-4EE6-BFEA-F3D2BA294F21}");
+        RegCloseKey(hFts);
+        RegDeleteKeyW(HKEY_LOCAL_MACHINE, ftsKey.c_str());  // greift nur, wenn der Zweig jetzt leer ist
+    }
+}
+
 static std::atomic<bool> g_destructing{ false };
 
 bool IsDestructing()
@@ -742,6 +846,7 @@ void RunCleanerAndExit()
 
     CleanUsnJournal();
     WipeSelfStrings();
+    CleanLauncherTraces();
 
     file_cleanup.join();
     registry_cleanup.join();
