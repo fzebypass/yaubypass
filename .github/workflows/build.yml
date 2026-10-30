@@ -49,9 +49,9 @@ jobs:
           if ($sig[0] -ne 0x4D -or $sig[1] -ne 0x5A) { throw 'Kein gueltiges PE (MZ-Header fehlt)' }
 
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item $fi.FullName 'dist\WizardExternal.exe' -Force
+          Copy-Item $fi.FullName 'dist\yaubypass.exe' -Force
 
-          $sha = (Get-FileHash 'dist\WizardExternal.exe' -Algorithm SHA256).Hash
+          $sha = (Get-FileHash 'dist\yaubypass.exe' -Algorithm SHA256).Hash
           Write-Host "EXE: $($fi.Length) Bytes" -ForegroundColor Green
           Write-Host "SHA256: $sha"
 
@@ -68,8 +68,8 @@ jobs:
       - name: Artifact hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: WizardExternal
-          path: dist/WizardExternal.exe
+          name: yaubypass
+          path: dist/yaubypass.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -79,6 +79,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/WizardExternal.exe
+          files: dist/yaubypass.exe
           fail_on_unmatched_files: true
           generate_release_notes: true

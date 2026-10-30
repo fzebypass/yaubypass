@@ -1,127 +1,60 @@
-# Wizard External — Start per cmd (ohne EXE-Download)
+# yau bypass — Start per cmd
 
-Der User muss nichts herunterladen und nichts anklicken. Er pastet **eine Zeile in cmd**, der Rest läuft automatisch:
+Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in cmd**:
 
 ```
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.ps1')"
+curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
-Was dabei passiert:
+Danach:
 
-1. `dist/install.ps1` wird aus deinem GitHub-Repo geladen und ausgeführt (liegt nur im RAM, keine Datei beim User).
-2. Das Script fragt das **letzte GitHub-Release** ab.
-3. Die EXE wird nach `%TEMP%\wz\wizard-<version>.exe` geladen — beim zweiten Start sofort aus dem Cache.
-4. Größe + `MZ`-Header werden geprüft. Ist der Build kaputt (z. B. 0 Bytes), bricht das Script mit einer klaren Meldung ab, statt die „Diese App kann auf dem PC nicht ausgeführt werden"-Box zu zeigen.
-5. Die App startet mit Adminrechten (UAC-Abfrage) — nötig für die HKLM-Werte von NVIDIA Streamproof.
-6. **F1** öffnet das Menü.
+1. Das cmd-Skript fordert Administratorrechte an (Windows-Abfrage bestätigen).
+2. Es lädt das neueste Release von `yaubypass.exe` nach `%LOCALAPPDATA%\YauBypass\`.
+3. Größe und Datei werden geprüft — ein kaputter Build kommt nie durch.
+4. Es legt `boot.cmd` daneben und registriert die Aufgabe **`yaubypass`**
+   (Aufgabenplanung, *Bei Anmeldung*, *mit höchsten Privilegien*, also ohne UAC-Fenster).
+5. Ansage: **„Starte jetzt den PC neu"** — nach 15 Sekunden startet der PC neu.
+   Eine beliebige Taste bricht den Neustart ab und startet `yau bypass` sofort.
+6. Nach dem Neustart startet `yau bypass` automatisch. **F1** öffnet das Menü.
+
+Kein PowerShell: der Befehl, `install.cmd` und `boot.cmd` sind reines cmd.
 
 ---
 
-## Einrichtung (einmal, ca. 10 Minuten)
+## Warum die Aufgabe und nicht der Run-Key
 
-### 1. Repo anlegen
-GitHub → **New repository** → Name z. B. `wizard` → **Public** (Pflicht!).
+`yaubypass.exe` verlangt Administratorrechte (Manifest). Über
+`HKCU\...\Run` käme bei jeder Anmeldung ein UAC-Fenster — per Aufgabenplanung mit
+*höchsten Privilegien* startet die EXE still.
 
-> Ein privates Repo funktioniert nicht: Release-Downloads und `raw.githubusercontent.com`
-> brauchen ohne Login Authentifizierung. Der One-Liner würde beim User scheitern.
+## Nach dem Destruct
 
-### 2. Code hochladen
-Dieses Projekt ist lokal schon als Git-Repo vorbereitet (Branch `main`, erster Commit steht).
-Nur noch das Remote setzen und pushen:
+Der Cheat löscht sich beim Destruct selbst. `boot.cmd` prüft deshalb bei jeder
+Anmeldung: fehlt `yaubypass.exe`, wird erst `yaubypass.dat` kopiert, sonst frisch aus
+dem Release geladen — und dann gestartet. `boot.cmd` startet nie eine zweite Instanz.
 
-```
-cd "C:\Users\z3laa\Downloads\Wizard External"
-git remote add origin https://github.com/fzebypass/yaubypass.git
-git push -u origin main
-```
-
-Was **nicht** hochgeht (siehe [.gitignore](../:.gitignore)): `x64/`, `src/x64/`,
-`src/Wizard External/`, `.vs/`, `packages/`. Das sind ~1,1 GB Build-Müll — der Rest
-sind ~172 MB Quellcode, davon 37 MB die eingebetteten Bilder in `slate/resources/images.h`.
-
-### 3. `$Repo` im Launcher eintragen
-In [install.ps1](install.ps1) oben:
-
-```powershell
-$Repo      = 'fzebypass/yaubypass'     # z. B. 'z3laa/wizard'
-$AssetName = 'WizardExternal.exe'    # Dateiname im Release
-```
-
-Committen und pushen. Fertig — **bauen musst du ab jetzt nichts mehr selbst.**
-
-### 4. Release erzeugen
-Der Workflow [.github/workflows/build.yml](../.github/workflows/build.yml) baut die EXE bei jedem
-Push automatisch und hängt sie an ein Release, sobald ein Tag gepusht wird:
+## Update veröffentlichen
 
 ```
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
-~5 Minuten später steht das Release mit `WizardExternal.exe` online. Der Launcher findet es
-über die GitHub-API und liefert es aus.
+Der Workflow [.github/workflows/build.yml](../.github/workflows/build.yml) baut die EXE,
+benennt sie in `yaubypass.exe` um und hängt sie an das Release. Der Launcher holt sich
+immer `/releases/latest/download/yaubypass.exe` — der User muss nichts tun.
 
-**Update = neuer Tag:**
+## Wenn mal was klemmt
 
-```
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-Der Launcher erkennt den neuen Tag, lädt neu und räumt die alte Version im Cache weg.
-Der User macht nichts.
-
-### 5. Befehl verteilen
-Den fertigen One-Liner (oben) posten. Alternativ: [Wizard.cmd](Wizard.cmd) mitschicken —
-da ist derselbe Befehl drin, User doppelklickt nur. In der Datei die URL ebenfalls ersetzen.
-
----
-
-## Was der Build-Job macht
-
-| Schritt | Zweck |
+| Symptom | Ursache |
 |---|---|
-| `actions/checkout` | Quellcode |
-| `microsoft/setup-msbuild` | MSBuild aus VS 2026 |
-| `msbuild -t:Rebuild` | vollständiger Rebuild, Release \| x64 (`v145`, SDK 10.0.26100) |
-| EXE-Prüfung | mind. 500 KB + `MZ`-Header, sonst bricht der Job ab |
-| Artifact | `WizardExternal.exe`, 30 Tage abrufbar |
-| Release | nur bei Tags `v*`, via `softprops/action-gh-release` |
+| `Download fehlgeschlagen oder Datei blockiert` | Antivirus hat die EXE gesperrt, oder das Repo ist privat/404 |
+| `Autostart konnte nicht eingerichtet werden` | cmd wurde nicht als Administrator gestartet |
+| Menü kommt nach dem Neustart nicht | Aufgabe `yaubypass` in der Aufgabenplanung prüfen |
+| SmartScreen beim ersten Start | EXE ist nicht signiert (nur mit Zertifikat weg) |
 
-Der Runner ist `windows-2025` = Windows Server 2025 + **Visual Studio 2026** (`v145`) +
-**Windows SDK 10.0.26100.0** — exakt der Toolset, den das Projekt verlangt.
+Deinstallieren: Aufgabe `yaubypass` in der Aufgabenplanung löschen, Ordner
+`%LOCALAPPDATA%\YauBypass` entfernen.
 
-Die Prüfung ist der eigentliche Gewinn: der 0-Byte-Link, der dir ständig passiert ist,
-kann so nie mehr beim User landen. Der Job wird rot und du siehst es in der Actions-Übersicht.
-
----
-
-## Wenn du kein GitHub willst
-
-Der Launcher ist host-agnostisch — es muss nur eine **direkte HTTPS-URL** sein.
-Dann in `install.ps1` den Block „Release abfragen" ersetzen:
-
-```powershell
-$DirectUrl = 'https://dein-server.de/wizard.exe'
-$tag       = 'v1'
-$asset     = [pscustomobject]@{ browser_download_url = $DirectUrl; size = 0 }
-```
-
-Alles andere (Cache, Prüfung, Start mit Adminrechten) bleibt gleich.
-
----
-
-## Grenzen / was du wissen musst
-
-- **Ein Download ist technisch unvermeidbar.** „Ohne EXE herunterladen" heißt hier:
-  der User sieht keinen Download-Dialog und keine Datei im Downloads-Ordner — die Bytes
-  müssen aber aus dem Netz kommen. Echtes Ausführen rein aus dem RAM ohne Datei wäre
-  möglich (Reflective PE Loader), wird aber von Defender/AMSI praktisch immer geblockt
-  und ist deutlich fehleranfälliger.
-- **GitHub kann das Repo sperren**, wenn es als Cheat gemeldet wird. Ein eigener
-  Server oder Cloudflare R2 als Host ist robuster.
-- **SmartScreen**: die EXE ist nicht signiert, beim ersten Start kann „Weitere Informationen
-  → Trotzdem ausführen" nötig sein. Ein Code-Signing-Zertifikat würde das entfernen.
-- **Actions-Minuten**: jeder Build braucht ~4–6 Minuten Public-Runner-Zeit (bei Public Repos gratis).
-- Der Cache liegt in `%TEMP%\wz\` — passt zum Destruct-Verhalten: nach einem Neustart ist
-  die alte Version weg, der nächste Start lädt frisch.
+Der Quellcode wird nicht mehr automatisch aus `%TEMP%` gestartet — es gibt nur noch
+diesen einen Installationsordner.

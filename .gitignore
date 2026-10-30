@@ -26,6 +26,7 @@ packages/
 
 # ---- Agent / temporär ----
 .freebuff/
+dist/yaubypass.exe
 dist/WizardExternal.exe
 Thumbs.db
 desktop.ini
