@@ -3,7 +3,7 @@
 Der User muss nichts herunterladen und nichts anklicken. Er pastet **eine Zeile in cmd**, der Rest läuft automatisch:
 
 ```
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/DEINNAME/DEINREPO/main/dist/install.ps1')"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.ps1')"
 ```
 
 Was dabei passiert:
@@ -31,7 +31,7 @@ Nur noch das Remote setzen und pushen:
 
 ```
 cd "C:\Users\z3laa\Downloads\Wizard External"
-git remote add origin https://github.com/DEINNAME/DEINREPO.git
+git remote add origin https://github.com/fzebypass/yaubypass.git
 git push -u origin main
 ```
 
@@ -43,7 +43,7 @@ sind ~172 MB Quellcode, davon 37 MB die eingebetteten Bilder in `slate/resources
 In [install.ps1](install.ps1) oben:
 
 ```powershell
-$Repo      = 'DEINNAME/DEINREPO'     # z. B. 'z3laa/wizard'
+$Repo      = 'fzebypass/yaubypass'     # z. B. 'z3laa/wizard'
 $AssetName = 'WizardExternal.exe'    # Dateiname im Release
 ```
 

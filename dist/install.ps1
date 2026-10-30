@@ -1,13 +1,13 @@
 # ============================================================
 #  Wizard External - One-Liner Launcher
 #  Aufruf beim User (cmd):
-#    powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/DEINNAME/DEINREPO/main/install.ps1')"
+#    powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.ps1')"
 # ============================================================
 
 $ErrorActionPreference = 'Stop'
 
 # ---------------- HIER ANPASSEN ----------------
-$Repo      = 'DEINNAME/DEINREPO'          # GitHub  user/repo  (MUSS public sein)
+$Repo      = 'fzebypass/yaubypass'          # GitHub  user/repo  (MUSS public sein)
 $AssetName = 'WizardExternal.exe'         # Dateiname des Assets im Release
 $MinSize   = 500KB                        # kleinere Dateien gelten als kaputter Build
 # ----------------------------------------------
