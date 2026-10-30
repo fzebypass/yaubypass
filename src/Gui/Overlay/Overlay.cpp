@@ -16,6 +16,10 @@
 #include <tchar.h>
 #include <thread>
 
+// Typography of the reference menu: Manrope for widgets, Inter for titles/buttons.
+#include <reference_font.h>
+#include <reference_fonts.hpp>
+
 #pragma comment(lib, "dcomp.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -409,9 +413,9 @@ namespace Gui
 		return;
 	}
 
-	void Overlay::Fonts()
-	{
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
+void Overlay::Fonts()
+{
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 		io.IniFilename = nullptr;
@@ -441,6 +445,13 @@ namespace Gui
 		g_Variables.m_FontSecundary = io.Fonts->AddFontFromMemoryTTF(InterSemiBold, sizeof(InterSemiBold), 16.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic());
 		g_Variables.m_FontSmaller = io.Fonts->AddFontFromMemoryTTF(InterSemiBold, sizeof(InterSemiBold), 14.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic());
 		g_Variables.m_FontSmaller2 = io.Fonts->AddFontFromMemoryTTF(MontSerratEB, sizeof(MontSerratEB), 14.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic());
+
+		// Reference menu fonts, used by the imported widgets.
+		ImFont* ref_widgets = io.Fonts->AddFontFromMemoryTTF( manrope_medium, sizeof( manrope_medium ), 18.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic( ) );
+		ImFont* ref_child = io.Fonts->AddFontFromMemoryTTF( inter_bold, sizeof( inter_bold ), 17.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic( ) );
+		ImFont* ref_bold = io.Fonts->AddFontFromMemoryTTF( inter_bold, sizeof( inter_bold ), 14.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic( ) );
+		ImFont* ref_icons = io.Fonts->AddFontFromMemoryTTF( icon_font, sizeof( icon_font ), 17.f, &Cfg, io.Fonts->GetGlyphRangesCyrillic( ) );
+		RefFonts::Set( ref_bold, ref_child, ref_widgets, ref_icons );
 
 		if (!g_Variables.m_FontNormal) g_Variables.m_FontNormal = io.Fonts->AddFontDefault();
 		if (!g_Variables.m_FontBig) g_Variables.m_FontBig = g_Variables.m_FontNormal;

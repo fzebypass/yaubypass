@@ -1,6 +1,6 @@
 #pragma once
 
-inline const char* keys[] {
+inline const char* key_names[] {
 	"NONE",
 	"M1",
 	"M2",

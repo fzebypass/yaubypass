@@ -33,6 +33,8 @@ void c_font::setup( unsigned char* data, size_t data_size, std::vector< float > 
 
 bool c_widgets::button( const ptext& label, ImVec2 size, c_buttonstyle style ) 
 {
+    // Forward to the reference widget so the button is drawn by the imported theme.
+    return ImGui::Button( label.translate( ).data( ), size );
 	struct s {
 		float hover;
 		float held;
@@ -73,6 +75,15 @@ bool c_widgets::button( const ptext& label, ImVec2 size, c_buttonstyle style )
 bool c_widgets::checkbox( const char* icon, const ptext& label, bool* v, c_checkboxstyle style ) 
 {
     g_search->add_item( { label.str, [=] { checkbox( icon, label, v, style ); } } );
+
+    // Reference checkbox (left aligned square, accent fill).
+    const bool ref_pressed = ImGui::Checkbox( label.translate( ).data( ), v );
+    if ( style.key ) {
+        SameLine( 0, 8 ds );
+        static int key_mode = 1;
+        ImGui::Keybind( label.translate( ).data( ), style.key, &key_mode, false );
+    }
+    return ref_pressed;
     
     struct s {
         float anim;
@@ -290,6 +301,7 @@ bool c_widgets::slider(const char* icon, const ptext& label, T* v, T min, T max,
 
 bool c_widgets::sliderint( const char* icon, const ptext& label, int* v, int min, int max, const char* format ) 
 {
+    return ImGui::SliderInt( label.translate( ).data( ), v, min, max, format );
 	bool result = slider( icon, label, v, min, max, format );
 	keybinds.popup( label.str, v, ht_sliderint, min, max );
 	g_search->add_item( { label.str, [=] { sliderint( icon, label, v, min, max, format ); } } );
@@ -298,6 +310,7 @@ bool c_widgets::sliderint( const char* icon, const ptext& label, int* v, int min
 }
 bool c_widgets::sliderfloat( const char* icon, const ptext& label, float* v, float min, float max, const char* format ) 
 {
+    return ImGui::SliderFloat( label.translate( ).data( ), v, min, max, format );
 	bool result = slider( icon, label, v, min, max, format );
 	keybinds.popup( label.str, v, ht_sliderfloat, min, max );
 	g_search->add_item( { label.str, [=] { sliderfloat( icon, label, v, min, max, format ); } } );
@@ -307,6 +320,7 @@ bool c_widgets::sliderfloat( const char* icon, const ptext& label, float* v, flo
 
 bool c_widgets::coloredit( const char* icon, const ptext& label, float* col, ImVec2 size )
 {
+    return ImGui::ColorEdit4( label.translate( ).data( ), col, ImGuiColorEditFlags_AlphaBar );
 	struct s {
 		float anim;
 		float hover;
@@ -636,6 +650,8 @@ bool c_widgets::multicombo( const char* icon, const ptext& label, bool* v, std::
 }
 bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 {
+    static int bind_mode = 1;
+    return ImGui::Keybind( label.translate( ).data( ), key, &bind_mode );
 	struct s {
 		float anim;
 		float hover;
@@ -643,7 +659,7 @@ bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 		float w;
 		bool active = false;
 	}; auto& obj = anim_obj( label.str.data( ), 0, s{ } );
-	std::string_view buf = obj.active ? "..." : keys[*key];
+	std::string_view buf = obj.active ? "..." : key_names[*key];
 	obj.w = ImLerp( obj.w, g_draw->textsize( font, 14, buf.data( ) ).x, GetIO( ).DeltaTime * 17 );
 
 	auto window = GetCurrentWindow( );
@@ -715,6 +731,10 @@ bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 }
 bool c_widgets::selector( const ptext& label, int* v, const std::vector< std::string_view >& items )
 {
+    std::vector< const char* > raw_items;
+    raw_items.reserve( items.size( ) );
+    for ( const auto& item : items ) raw_items.push_back( item.data( ) );
+    return ImGui::Combo( label.translate( ).data( ), v, raw_items.data( ), ( int ) raw_items.size( ), ( int ) raw_items.size( ) );
 	struct s {
 		ImVec2 size;
 	}; auto& obj = anim_obj( label.str.data( ), 0, s{ } );

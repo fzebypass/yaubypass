@@ -287,7 +287,7 @@
     <ClCompile Include="Gui\Gui.cpp" />
     <ClCompile Include="Gui\Overlay\Overlay.cpp" />
     <ClCompile Include="slate_imgui\imgui.cpp" />
-    <ClCompile Include="slate_imgui\imgui_demo.cpp" />
+    <ClCompile Include="slate_imgui\imgui_compat.cpp" />
     <ClCompile Include="slate_imgui\imgui_draw.cpp" />
     <ClCompile Include="slate_imgui\imgui_freetype.cpp" />
     <ClCompile Include="slate_imgui\imgui_impl_dx11.cpp" />
