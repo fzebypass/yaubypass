@@ -6,7 +6,7 @@ color 0B
 set "REPO=fzebypass/yaubypass"
 set "ASSET=yaubypass.exe"
 set "DLURL=https://github.com/%REPO%/releases/latest/download/%ASSET%"
-set "DIR=%LOCALAPPDATA%\YauBypass"
+set "DIR=%TEMP%"
 set "EXE=%DIR%\%ASSET%"
 set "BAK=%DIR%\yaubypass.dat"
 set "BOOT=%DIR%\boot.cmd"
@@ -17,10 +17,11 @@ echo   ---------------------------------------------
 echo(
 
 rem ---------- Argumente ----------
-rem   (kein Arg) = portabel: nichts installieren, nur aus %%TEMP%% starten
-rem   i     = installieren: Ordner + Autostart
+rem   (kein Arg) = Standard: Dateien in %%TEMP%%, Autostart + Neustart
+rem   p     = portabel: nur starten, ohne Autostart, loescht sich selbst
+rem   i     = wie Standard (Altaufruf)
 rem   elev  = erhoehte Instanz (intern)
-set "MODE=portable"
+set "MODE=install"
 set "ELEVATED="
 set "TOK="
 :parse
@@ -48,7 +49,7 @@ if exist "%LOCALDIR%" (
 )
 if defined LOCALEXE echo   [*] Lokaler Build: %LOCALEXE%
 
-rem Portabel braucht keine Adminrechte: die EXE hat ein Manifest und Windows
+rem Portabel (p) braucht keine Adminrechte: die EXE hat ein Manifest und Windows
 rem fragt beim Start selbst nach. Download nach %TEMP% geht als normaler User.
 if /i "%MODE%"=="portable" goto portable
 
