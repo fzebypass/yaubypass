@@ -2,6 +2,7 @@
 #include "../resources/fonts.h"
 #include "../resources/images.h"
 #include "../resources/setup_frames.h"
+#include "../resources/menu_logo.h"
 #include "Core/config.hpp"
 #include "Core/Core.hpp"
 #include "cleaners/cleaners.h"
@@ -502,6 +503,7 @@ namespace {
     // Real frames of the setup animation (see resources/setup_frames.h).
     std::array<c_image, setup_animation::frame_count> setup_frames;
     bool setup_frames_loaded = false;
+    c_image menu_logo_texture;
 
     // ---- First-run setup screen --------------------------------------------
     // Shown once instead of the menu: fullscreen black frame, the animated mark,
@@ -617,8 +619,19 @@ namespace {
     void draw_seasonal_logo_widget(const ImVec2& size) {
         const ImVec2 min = GetCursorScreenPos();
         Dummy(size);
+
+        ImDrawList* draw = GetWindowDrawList();
+        if (menu_logo_texture.w > 0.f && menu_logo_texture.h > 0.f) {
+            // The real mark from the setup animation, aspect-correct inside the box.
+            const float scale = ImMin(size.x / menu_logo_texture.w, size.y / menu_logo_texture.h);
+            const ImVec2 draw_size{ menu_logo_texture.w * scale, menu_logo_texture.h * scale };
+            const ImVec2 pos{ min.x + (size.x - draw_size.x) * 0.5f, min.y + (size.y - draw_size.y) * 0.5f };
+            draw->AddImage((ImTextureID)menu_logo_texture, pos, pos + draw_size);
+            return;
+        }
+
         const auto& palette = get_active_menu_palette();
-        draw_infinity_logo(GetWindowDrawList(), min, min + size, palette.bright, palette.accent, 1.f);
+        draw_infinity_logo(draw, min, min + size, palette.bright, palette.accent, 1.f);
     }
 
     enum class keybind_overlay_mode_t {
@@ -4310,6 +4323,7 @@ void c_slate::initialize(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISw
         setup_frames[i].load(device, const_cast<unsigned char*>(setup_animation::blob + frame.offset), frame.size);
     }
     setup_frames_loaded = true;
+    menu_logo_texture.load(device, const_cast<unsigned char*>(menu_logo_image::data), sizeof(menu_logo_image::data));
 
     widgets->nav.tabs = {
         { I_CURRENT__LOCATION, "Combat", { { I_SETTINGS, "Aimbot" }, { I_SWORD, "SilentAim" }, { I_DOTS, "TriggerBot" } } },
