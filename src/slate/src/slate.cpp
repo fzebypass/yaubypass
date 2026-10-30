@@ -5241,7 +5241,7 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
             int combat_subtab = 0;
             const bool menu_warmed_up = (GetTickCount64() - menu_opened_at) >= 600;
 
-            widgets->window.begin("menu", vec2{ 726, 488 }, ImGuiWindowFlags_NoBringToFrontOnFocus);
+            widgets->window.begin("menu", vec2{ 822, 500 }, ImGuiWindowFlags_NoBringToFrontOnFocus);
             {
                 menu_pos = GetWindowPos();
                 menu_size = GetWindowSize();
@@ -5299,7 +5299,10 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                         g_style->push(pcol_border, g_style->col(pcol_border, 0));
                         widgets->textinput("##searchbar", g_search->buf, sizeof(g_search->buf), { .padding = vec2{ 0, 0 }, .icon = I_SEARCH, .hint = search_hint, .size = ImVec2{ search_hint_width + 24 ds, 16 ds }, .bgcol = pcolor(0, 0, 0, 0), .rounding = 0 ds });
                         g_style->pop(2);
-                        GetWindowDrawList()->AddRectFilled(GetWindowPos() + ImVec2{ 0, GetWindowHeight() - 1 }, GetWindowPos() + ImVec2{ 44.f ds, GetWindowHeight() }, g_style->col(pcol_border, 2.f));
+                        // Accent hairline across the header instead of a short divider stub:
+                        // it separates the tab row from the content without a hard border.
+                        GetWindowDrawList()->AddRectFilled(GetWindowPos() + ImVec2{ 0, GetWindowHeight() - 1 },
+                            GetWindowPos() + ImVec2{ GetWindowWidth(), GetWindowHeight() }, g_style->col(pcol_scheme, 0.22f));
                     }
                     EndChild();
                     widgets->spacing(0.f ds);

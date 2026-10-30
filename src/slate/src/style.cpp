@@ -31,19 +31,25 @@ void c_style::setup( ) {
 		themes[0].colors[pcol_tab] = pcolor{ 21, 21, 21 };
 		themes[0].colors[pcol_backdrop] = pcolor{ 255, 255, 255, 0.05f };
 
-        themes[0].colors[pcol_bg] = pcolor{ 5, 5, 5, 1.00f };
-        themes[0].colors[pcol_bg2] = pcolor{ 8, 8, 8, 1.00f };
-        themes[0].colors[pcol_bg3] = pcolor{ 15, 15, 15, 1.00f };
-        themes[0].colors[pcol_bg4] = pcolor{ 22, 22, 22, 1.00f };
-		themes[0].colors[pcol_bg5] = pcolor{ 232, 232, 232, 1.00f };
-		themes[0].colors[pcol_bg6] = pcolor{ 15, 15, 15, 1.00f };
-        themes[0].colors[pcol_border] = pcolor{ 255, 255, 255, 0.03f };
-        themes[0].colors[pcol_scheme] = pcolor{ 199, 199, 199, 1.00f };
+        // Warm near-black surfaces with one clearly separated panel tone, the way the
+        // reference design stacks background / panel / card instead of black on black.
+        themes[0].colors[pcol_bg] = pcolor{ 13, 12, 18, 0.96f };
+        themes[0].colors[pcol_bg2] = pcolor{ 27, 25, 31, 0.98f };
+        themes[0].colors[pcol_bg3] = pcolor{ 33, 30, 38, 1.00f };
+        themes[0].colors[pcol_bg4] = pcolor{ 46, 41, 55, 1.00f };
+		themes[0].colors[pcol_bg5] = pcolor{ 46, 41, 55, 1.00f };
+		themes[0].colors[pcol_bg6] = pcolor{ 39, 36, 47, 1.00f };
+        themes[0].colors[pcol_bg7] = pcolor{ 9, 8, 12, 1.00f };
+        themes[0].colors[pcol_border] = pcolor{ 46, 41, 55, 0.90f };
+        themes[0].colors[pcol_separator] = pcolor{ 255, 255, 255, 0.05f };
+        themes[0].colors[pcol_checkboxdot] = pcolor{ 46, 41, 55, 1.00f };
+        themes[0].colors[pcol_listbox] = pcolor{ 33, 30, 38, 0.60f };
+        themes[0].colors[pcol_scheme] = pcolor{ 226, 186, 96, 1.00f };
         themes[0].colors[pcol_text] = pcolor{ 231, 231, 231, 1.00f };
-        themes[0].colors[pcol_text2] = pcolor{ 76, 76, 76, 1.00f };
-        themes[0].colors[pcol_text3] = pcolor{ 76, 76, 76, 0.60f };
-		themes[0].colors[pcol_tab] = pcolor{ 21, 21, 21 };
-		themes[0].colors[pcol_backdrop] = pcolor{ 255, 255, 255, 0.1f };
+        themes[0].colors[pcol_text2] = pcolor{ 118, 114, 130, 1.00f };
+        themes[0].colors[pcol_text3] = pcolor{ 118, 114, 130, 0.60f };
+		themes[0].colors[pcol_tab] = pcolor{ 39, 36, 47, 1.00f };
+		themes[0].colors[pcol_backdrop] = pcolor{ 13, 12, 18, 0.90f };
 
 		themes[1].colors[pcol_bg] = pcolor{ 255, 255, 255, 1.00f };
         themes[1].colors[pcol_bg2] = pcolor{ 239, 239, 239, 1.00f };
@@ -77,9 +83,9 @@ void c_style::setup( ) {
 	GImGui->Style.Colors[ImGuiCol_TextSelectedBg] = colors[pcol_scheme].alpha( 0.3f );
 	GImGui->Style.Colors[ImGuiCol_WindowShadow] = pcolor{ 0.f, 0.f, 0.f, 0.0f };
 
-	auto& style = GImGui->Style;
-
-	style.WindowRounding = 6 ds;
+	auto& style = GImGui->Style;    // Geometry follows the reference design: a 6px card radius, 2px frames and
+    // a uniform 20px rhythm so cards line up on every page.
+    style.WindowRounding = 6 ds;
     style.WindowPadding = ImVec2{ 0, 0 };
     style.WindowBorderSize = 1;
 
@@ -87,10 +93,10 @@ void c_style::setup( ) {
     style.FramePadding = vec2{ 12, 10 };
     style.FrameBorderSize = 0;
 
-    style.PopupRounding = 2 ds;
+    style.PopupRounding = 6 ds;
     style.PopupBorderSize = 0;
 
-    style.ChildRounding = 4 ds;
+    style.ChildRounding = 6 ds;
     style.ChildBorderSize = 1;
 
     style.ItemSpacing = vec2{ 14, 14 };

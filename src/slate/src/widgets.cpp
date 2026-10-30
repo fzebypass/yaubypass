@@ -101,11 +101,19 @@ bool c_widgets::checkbox( const char* icon, const ptext& label, bool* v, c_check
     auto bgcol = col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled );
     auto col = col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.enabled );
     
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled ), 8 ds );
-    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border ), g_style->col( pcol_border, 0.f ), obj.enabled ), 8 ds );
+    // Checkbox square (14px, 2px radius) with an accent fill and a dark tick, matching
+    // the reference design instead of the old pill switch.
+    const float box_sz = 14 ds;
+    const ImVec2 box_min{ bb.Max.x - box_sz, bb.GetCenter( ).y - box_sz * 0.5f };
+    const ImVec2 box_max{ bb.Max.x, bb.GetCenter( ).y + box_sz * 0.5f };
+    window->DrawList->AddRectFilled( box_min, box_max, col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled ), 2 ds );
+    window->DrawList->AddRect( box_min, box_max, col_anim( g_style->col( pcol_border, 0.9f ), g_style->col( pcol_border, 0.f ), obj.enabled ), 2 ds );
+    if ( obj.enabled > 0.01f ) {
+        const ImU32 tick = ImGui::GetColorU32( ImVec4( 0.f, 0.f, 0.f, obj.enabled ) );
+        ImGui::RenderCheckMark( window->DrawList, box_min + ImVec2{ box_sz * 0.22f, box_sz * 0.16f }, tick, box_sz * 0.78f );
+    }
     g_draw->text( icons, 16, total_bb.Min, g_style->col( pcol_scheme ), icon );
     window->DrawList->AddText( total_bb.Min + vec2{ 24, 0 }, col, label.translate( ).data( ), FindRenderedTextEnd( label.translate( ).data( ) ) );
-    window->DrawList->AddRectFilled( bb.Min + ImVec2{ 3 ds + ( bb.GetWidth( ) - bb.GetHeight( ) ) * obj.enabled, 3 ds }, bb.Min + ImVec2{ 3 ds + ( bb.GetWidth( ) - bb.GetHeight( ) ) * obj.enabled, 3 ds } + vec2{ 10, 10 } + vec2{ 2, 0 } * obj.hover, col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_bg3 ), obj.enabled ), 5, 240 );
     
     auto pos = window->DC.CursorPos;
     auto posprev = window->DC.CursorPosPrevLine;
@@ -877,12 +885,19 @@ void c_widgets::widget_child::begin( const char* icon, const ptext& name, int nu
         const float text_y = ImMax( 0.f, ( GetWindowHeight( ) - header_text_size.y ) * 0.5f - 2.f ds + header_vertical_offset );
 
         SetCursorPos( { 14.f ds, icon_y } );
-        PushFont( fonts[icons].get( 16 ) );
+        PushFont( fonts[icons].get( 14 ) );
         TextColored( g_style->col( pcol_scheme ), icon );
         PopFont( );
         SameLine( 0, 8.f ds );
         SetCursorPosY( text_y );
-        TextEx( header_label.data( ), FindRenderedTextEnd( header_label.data( ) ) );
+        PushFont( fonts[font].get( 12 ) );
+        TextColored( g_style->col( pcol_text, 0.92f ), "%s", header_label.data( ) );
+        PopFont( );
+
+        // Hairline under the card title keeps the header visually separate from the rows
+        // without adding another box.
+        GetWindowDrawList( )->AddLine( GetWindowPos( ) + ImVec2{ 14 ds, GetWindowHeight( ) - 1.f },
+            GetWindowPos( ) + ImVec2{ GetWindowWidth( ) - 14 ds, GetWindowHeight( ) - 1.f }, g_style->col( pcol_separator, 1.f ) );
 
         if ( IsWindowHovered( ImGuiHoveredFlags_AllowWhenBlockedByActiveItem ) ) {
             const ImGuiID header_id = GetCurrentWindow( )->ID;
@@ -1191,8 +1206,8 @@ bool c_widgets::widget_nav::subtab( const c_subtab& item, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( g_style->col( pcol_bg2, 0.f ), g_style->col( pcol_bg2 ), obj.selected ), 4 ds );
-    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border ), obj.selected ), 4 ds );
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3, 0.f ), g_style->col( pcol_bg4, 0.60f ), obj.hover ), g_style->col( pcol_scheme, 0.13f ), obj.selected ), 6 ds );
+    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border, 0.75f ), obj.selected ), 6 ds );
     window->DrawList->AddText( { bb.Min.x + 36 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), item.icon );
     
@@ -1232,9 +1247,13 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, g_style->col( pcol_tab, obj.selected ), 3 ds );
-    g_draw->text( icons, 16, { bb.Min.x + 10 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
-    window->DrawList->AddText( { bb.Min.x + 34 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    // Active row is a soft accent pill instead of a solid block: tinted fill, hairline
+    // border and a short accent bar on the left edge.
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3, 0.f ), g_style->col( pcol_bg4, 0.65f ), obj.hover ), g_style->col( pcol_scheme, 0.13f ), obj.selected ), 6 ds );
+    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border, 0.75f ), obj.selected ), 6 ds );
+    window->DrawList->AddRectFilled( { bb.Min.x + 2 ds, bb.GetCenter( ).y - 8 ds }, { bb.Min.x + 4 ds, bb.GetCenter( ).y + 8 ds }, g_style->col( pcol_scheme, obj.selected ), 2 ds );
+    g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
+    window->DrawList->AddText( { bb.Min.x + 36 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     
     
     return pressed;
