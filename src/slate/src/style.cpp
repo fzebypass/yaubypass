@@ -31,24 +31,24 @@ void c_style::setup( ) {
 		themes[0].colors[pcol_tab] = pcolor{ 21, 21, 21 };
 		themes[0].colors[pcol_backdrop] = pcolor{ 255, 255, 255, 0.05f };
 
-        // Warm near-black surfaces with one clearly separated panel tone, the way the
-        // reference design stacks background / panel / card instead of black on black.
-        themes[0].colors[pcol_bg] = pcolor{ 13, 12, 18, 0.96f };
-        themes[0].colors[pcol_bg2] = pcolor{ 27, 25, 31, 0.98f };
-        themes[0].colors[pcol_bg3] = pcolor{ 33, 30, 38, 1.00f };
-        themes[0].colors[pcol_bg4] = pcolor{ 46, 41, 55, 1.00f };
-		themes[0].colors[pcol_bg5] = pcolor{ 46, 41, 55, 1.00f };
-		themes[0].colors[pcol_bg6] = pcolor{ 39, 36, 47, 1.00f };
-        themes[0].colors[pcol_bg7] = pcolor{ 9, 8, 12, 1.00f };
-        themes[0].colors[pcol_border] = pcolor{ 46, 41, 55, 0.90f };
+        // Exact values of the reference design: translucent near-black window, a cooler
+        // panel tone, cards at 39% opacity and text that only lights up when active.
+        themes[0].colors[pcol_bg] = pcolor{ 13, 12, 18, 0.90f };
+        themes[0].colors[pcol_bg2] = pcolor{ 27, 25, 31, 0.82f };
+        themes[0].colors[pcol_bg3] = pcolor{ 46, 41, 55, 1.00f };
+        themes[0].colors[pcol_bg4] = pcolor{ 33, 30, 38, 1.00f };
+		themes[0].colors[pcol_bg5] = pcolor{ 39, 39, 50, 1.00f };
+		themes[0].colors[pcol_bg6] = pcolor{ 33, 30, 38, 1.00f };
+        themes[0].colors[pcol_bg7] = pcolor{ 4, 8, 19, 1.00f };
+        themes[0].colors[pcol_border] = pcolor{ 46, 41, 55, 1.00f };
         themes[0].colors[pcol_separator] = pcolor{ 255, 255, 255, 0.05f };
-        themes[0].colors[pcol_checkboxdot] = pcolor{ 46, 41, 55, 1.00f };
-        themes[0].colors[pcol_listbox] = pcolor{ 33, 30, 38, 0.60f };
+        themes[0].colors[pcol_checkboxdot] = pcolor{ 39, 39, 50, 1.00f };
+        themes[0].colors[pcol_listbox] = pcolor{ 33, 30, 38, 1.00f };
         themes[0].colors[pcol_scheme] = pcolor{ 226, 186, 96, 1.00f };
-        themes[0].colors[pcol_text] = pcolor{ 231, 231, 231, 1.00f };
-        themes[0].colors[pcol_text2] = pcolor{ 118, 114, 130, 1.00f };
-        themes[0].colors[pcol_text3] = pcolor{ 118, 114, 130, 0.60f };
-		themes[0].colors[pcol_tab] = pcolor{ 39, 36, 47, 1.00f };
+        themes[0].colors[pcol_text] = pcolor{ 68, 67, 79, 1.00f };
+        themes[0].colors[pcol_text2] = pcolor{ 98, 97, 109, 1.00f };
+        themes[0].colors[pcol_text3] = pcolor{ 68, 67, 79, 0.65f };
+		themes[0].colors[pcol_tab] = pcolor{ 4, 8, 19, 1.00f };
 		themes[0].colors[pcol_backdrop] = pcolor{ 13, 12, 18, 0.90f };
 
 		themes[1].colors[pcol_bg] = pcolor{ 255, 255, 255, 1.00f };

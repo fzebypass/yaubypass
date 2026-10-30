@@ -5328,7 +5328,8 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                                 draw_seasonal_logo(GetWindowDrawList(), backdrop_min, backdrop_min + backdrop_extent, IM_COL32(255, 255, 255, 120));
                             }
                         }
-                        PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.02f, 0.02f, 0.05f, 0.32f));
+                        // Card plate of the reference design: #2E2937 at 39% over the window.
+                        PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.180f, 0.161f, 0.216f, 0.392f));
 
                         if (strlen(g_search->buf) == 0) {
                             widgets->nav.drawpage();

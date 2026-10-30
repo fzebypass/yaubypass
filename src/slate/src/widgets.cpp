@@ -98,22 +98,23 @@ bool c_widgets::checkbox( const char* icon, const ptext& label, bool* v, c_check
         *v = !*v;
     }
     
-    auto bgcol = col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled );
-    auto col = col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.enabled );
+    auto col = col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), pcolor{ 255, 255, 255, 1.f }, obj.enabled );
     
-    // Checkbox square (14px, 2px radius) with an accent fill and a dark tick, matching
-    // the reference design instead of the old pill switch.
-    const float box_sz = 14 ds;
-    const ImVec2 box_min{ bb.Max.x - box_sz, bb.GetCenter( ).y - box_sz * 0.5f };
-    const ImVec2 box_max{ bb.Max.x, bb.GetCenter( ).y + box_sz * 0.5f };
-    window->DrawList->AddRectFilled( box_min, box_max, col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled ), 2 ds );
-    window->DrawList->AddRect( box_min, box_max, col_anim( g_style->col( pcol_border, 0.9f ), g_style->col( pcol_border, 0.f ), obj.enabled ), 2 ds );
+    // Reference checkbox: 17px square on the left, same gradient plate as the buttons,
+    // accent fill plus a black mark whose clip animates in.
+    const float box_sz = 16 ds;
+    const ImVec2 box_min = total_bb.Min;
+    const ImVec2 box_max = box_min + ImVec2{ box_sz, box_sz };
+    window->DrawList->AddRectFilledMultiColor( box_min, box_max, g_style->col( pcol_bg3 ), g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), g_style->col( pcol_bg4 ) );
+    window->DrawList->AddRect( box_min, box_max, g_style->col( pcol_checkboxdot ), 2 ds );
+    window->DrawList->AddRectFilled( box_min, box_max, g_style->col( pcol_scheme, obj.enabled ), 2 ds );
     if ( obj.enabled > 0.01f ) {
-        const ImU32 tick = ImGui::GetColorU32( ImVec4( 0.f, 0.f, 0.f, obj.enabled ) );
-        ImGui::RenderCheckMark( window->DrawList, box_min + ImVec2{ box_sz * 0.22f, box_sz * 0.16f }, tick, box_sz * 0.78f );
+        window->DrawList->PushClipRect( box_min, box_min + ImVec2{ box_sz * obj.enabled, box_sz }, true );
+        ImGui::RenderCheckMark( window->DrawList, box_min + ImVec2{ box_sz * 0.22f, box_sz * 0.16f },
+            ImGui::GetColorU32( ImVec4( 0.f, 0.f, 0.f, obj.enabled ) ), box_sz * 0.78f );
+        window->DrawList->PopClipRect( );
     }
-    g_draw->text( icons, 16, total_bb.Min, g_style->col( pcol_scheme ), icon );
-    window->DrawList->AddText( total_bb.Min + vec2{ 24, 0 }, col, label.translate( ).data( ), FindRenderedTextEnd( label.translate( ).data( ) ) );
+    window->DrawList->AddText( box_max + vec2{ 8 ds, -2 ds }, col, label.translate( ).data( ), FindRenderedTextEnd( label.translate( ).data( ) ) );
     
     auto pos = window->DC.CursorPos;
     auto posprev = window->DC.CursorPosPrevLine;
@@ -1206,10 +1207,12 @@ bool c_widgets::widget_nav::subtab( const c_subtab& item, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3, 0.f ), g_style->col( pcol_bg4, 0.60f ), obj.hover ), g_style->col( pcol_scheme, 0.13f ), obj.selected ), 6 ds );
-    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border, 0.75f ), obj.selected ), 6 ds );
-    window->DrawList->AddText( { bb.Min.x + 36 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
-    g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), item.icon );
+    // Reference subtab: no box at all, just text that lifts and gets an accent underline.
+    const float lift = obj.selected * 3.f;
+    const float inset = bb.GetWidth( ) * 0.28f;
+    window->DrawList->AddRectFilled( { bb.Min.x + inset, bb.Max.y - 3 ds }, { bb.Max.x - inset, bb.Max.y },
+        col_anim( g_style->col( pcol_scheme, 0.f ), g_style->col( pcol_scheme, 0.95f ), obj.selected ), 2 ds, ImDrawFlags_RoundCornersTop );
+    window->DrawList->AddText( { bb.GetCenter( ).x - label_size.x * 0.5f, text_y - lift }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     
     
     return pressed;
@@ -1247,13 +1250,16 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    // Active row is a soft accent pill instead of a solid block: tinted fill, hairline
-    // border and a short accent bar on the left edge.
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3, 0.f ), g_style->col( pcol_bg4, 0.65f ), obj.hover ), g_style->col( pcol_scheme, 0.13f ), obj.selected ), 6 ds );
-    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border, 0.75f ), obj.selected ), 6 ds );
-    window->DrawList->AddRectFilled( { bb.Min.x + 2 ds, bb.GetCenter( ).y - 8 ds }, { bb.Min.x + 4 ds, bb.GetCenter( ).y + 8 ds }, g_style->col( pcol_scheme, obj.selected ), 2 ds );
-    g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
-    window->DrawList->AddText( { bb.Min.x + 34 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    // Reference tab: a deep pill that fades an accent gradient into its right edge with a
+    // solid accent dot, instead of a flat highlighted row.
+    const float pill_rounding = 15 ds;
+    const pcolor pill_bg = col_anim( g_style->col( pcol_tab, 0.f ), g_style->col( pcol_tab ), obj.selected );
+    const pcolor pill_glow = g_style->col( pcol_scheme, obj.selected );
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, pill_bg, pill_rounding );
+    window->DrawList->AddRectFilledMultiColor( { bb.Max.x - 34 ds, bb.Min.y }, bb.Max, pill_bg, pill_glow, pill_glow, pill_bg );
+    window->DrawList->AddCircleFilled( { bb.Max.x - 15 ds, bb.GetCenter( ).y }, 6 ds, pill_glow, 100 );
+    g_draw->text( icons, 16, { bb.Min.x + 10 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
+    window->DrawList->AddText( { bb.Min.x + 32 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), pcolor{ 255, 255, 255, 1.f }, obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     
     
     return pressed;
