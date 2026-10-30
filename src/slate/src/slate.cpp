@@ -420,11 +420,9 @@ namespace {
         // Dynamic is the only menu theme; it follows the logo colours.
         g_Config.General->MenuThemeMode = 0;
 
-        if (get_menu_theme_mode() == menu_theme_mode_t::Dynamic) {
-            apply_seasonal_menu_theme();
-            return;
-        }
-
+        // The design palette is fixed: the seasonal/logo sampling used to overwrite the
+        // accent, borders and text tones every frame, which is why restyling had no
+        // visible effect. g_style->setup() now animates straight to themes[0].
         sync_imgui_theme_colors();
     }
 
@@ -5254,7 +5252,7 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
 
                 g_shadertoy->bg(GetWindowDrawList(), GetWindowPos(), GetWindowPos() + GetWindowSize(), g_style->col(pcol_backdrop), GImGui->Style.WindowRounding);
                 PushStyleVar(ImGuiStyleVar_WindowPadding, vec2{ 0, 14 });
-                BeginChild("navbar", vec2{ 186, 0 }, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                BeginChild("navbar", vec2{ 160, 0 }, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
                 {
                     PopStyleVar();
                     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), g_style->col(pcol_bg2), GImGui->Style.WindowRounding, ImDrawFlags_RoundCornersLeft);
@@ -5268,7 +5266,18 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                         draw_seasonal_logo_widget(vec2{ logo_box_width, logo_box_width * 0.58f });
                     }
                     EndGroup();
-                    widgets->spacing(12.f ds);
+
+                    // Brand row under the logo, the way the reference design carries the
+                    // name in the sidebar instead of in a title bar.
+                    {
+                        PushFont(fonts[font].get(12));
+                        const char* brand = "PRUDA";
+                        const float brand_w = CalcTextSize(brand, 0, 1).x;
+                        SetCursorPosX((GetWindowWidth() - brand_w) * 0.5f);
+                        TextColored(g_style->col(pcol_scheme, 0.95f), "%s", brand);
+                        PopFont();
+                    }
+                    widgets->spacing(10.f ds);
                     SetCursorPosX(14 ds);
                     widgets->nav.drawtabs();
                     draw_account_sidebar_card(this);
@@ -5288,13 +5297,13 @@ void c_slate::draw(ID3D11Device* device, ID3D11DeviceContext* ctx, IDXGISwapChai
                 BeginChild("main", vec2{ 0, 0 }, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoBackground);
                 {
                     PushStyleVar(ImGuiStyleVar_WindowPadding, vec2{ 14, 14 });
-                    BeginChild("header", vec2{ 0, 60 }, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                    BeginChild("header", vec2{ 0, 48 }, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
                     {
                         PopStyleVar();
                         widgets->nav.drawsubtabs();
                         constexpr const char* search_hint = "Search Features";
                         const float search_hint_width = CalcTextSize(search_hint).x;
-                        SetCursorPos({ GetWindowWidth() - 44 ds - search_hint_width, 22 ds });
+                        SetCursorPos({ GetWindowWidth() - 44 ds - search_hint_width, 15 ds });
                         g_style->push(pcol_bg3, g_style->col(pcol_bg3, 0));
                         g_style->push(pcol_border, g_style->col(pcol_border, 0));
                         widgets->textinput("##searchbar", g_search->buf, sizeof(g_search->buf), { .padding = vec2{ 0, 0 }, .icon = I_SEARCH, .hint = search_hint, .size = ImVec2{ search_hint_width + 24 ds, 16 ds }, .bgcol = pcolor(0, 0, 0, 0), .rounding = 0 ds });

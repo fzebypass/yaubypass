@@ -1187,7 +1187,7 @@ bool c_widgets::widget_nav::subtab( const c_subtab& item, bool selected )
     const std::string_view label = item.label.translate( );
     const ImVec2 label_size = CalcTextSize( label.data( ), 0, 1 );
     const ImVec2 icon_size = g_draw->textsize( icons, 16, item.icon );
-    ImRect bb{ window->DC.CursorPos, window->DC.CursorPos + ImVec2{ label_size.x + 45 ds, 32 ds } };
+    ImRect bb{ window->DC.CursorPos, window->DC.CursorPos + ImVec2{ label_size.x + 44 ds, 30 ds } };
     ItemSize( bb );
     ItemAdd( bb, id );
     
@@ -1230,7 +1230,7 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     const ImVec2 label_size = CalcTextSize( label.data( ), 0, 1 );
     const ImVec2 icon_size = g_draw->textsize( icons, 16, tab.icon );
     
-    bool pressed = InvisibleButton( tab.label.str.data( ), { 158 ds, 32 ds } );
+    bool pressed = InvisibleButton( tab.label.str.data( ), { 132 ds, 30 ds } );
     const ImGuiID id = GImGui->LastItemData.ID;
     bool hovered = IsItemHovered( ), held = IsItemActive( );
     ImRect bb = GImGui->LastItemData.Rect;
@@ -1253,7 +1253,7 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border, 0.75f ), obj.selected ), 6 ds );
     window->DrawList->AddRectFilled( { bb.Min.x + 2 ds, bb.GetCenter( ).y - 8 ds }, { bb.Min.x + 4 ds, bb.GetCenter( ).y + 8 ds }, g_style->col( pcol_scheme, obj.selected ), 2 ds );
     g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
-    window->DrawList->AddText( { bb.Min.x + 36 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    window->DrawList->AddText( { bb.Min.x + 34 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     
     
     return pressed;
