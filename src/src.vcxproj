@@ -270,7 +270,6 @@
   <ItemGroup>
     <ClCompile Include="cleaners\cleaners.cpp" />
     <ClCompile Include="Core\Features\Aimbot.cpp" />
-    <ClCompile Include="Core\Features\LicenseGate.cpp" />
     <ClCompile Include="Core\Features\cam.cpp" />
     <ClCompile Include="Core\Features\dynamicfov.cpp" />
     <ClCompile Include="Core\Features\Esp.cpp" />

@@ -1,8 +1,5 @@
 # Wizard External — Start per cmd (ohne EXE-Download)
 
-Loader und Cheat sind **eine** EXE: Start → Key-Fenster (gold, mit Logo) → Key wird geprüft
-→ Cheat läuft → F1 öffnet das Menü. Ohne gültigen Key passiert nichts weiter.
-
 Der User muss nichts herunterladen und nichts anklicken. Er pastet **eine Zeile in cmd**, der Rest läuft automatisch:
 
 ```
@@ -16,6 +13,7 @@ Was dabei passiert:
 3. Die EXE wird nach `%TEMP%\wz\wizard-<version>.exe` geladen — beim zweiten Start sofort aus dem Cache.
 4. Größe + `MZ`-Header werden geprüft. Ist der Build kaputt (z. B. 0 Bytes), bricht das Script mit einer klaren Meldung ab, statt die „Diese App kann auf dem PC nicht ausgeführt werden"-Box zu zeigen.
 5. Die App startet mit Adminrechten (UAC-Abfrage) — nötig für die HKLM-Werte von NVIDIA Streamproof.
+6. **F1** öffnet das Menü.
 
 ---
 

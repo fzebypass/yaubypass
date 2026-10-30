@@ -24,12 +24,6 @@ src/Wizard External/
 packages/
 *.nupkg
 
-# ---- Admin-Panel Build + Secrets ----
-admin/bin/
-admin/obj/
-admin.txt
-api.txt
-
 # ---- Agent / temporär ----
 .freebuff/
 dist/WizardExternal.exe
