@@ -29,8 +29,3 @@ packages/
 dist/WizardExternal.exe
 Thumbs.db
 desktop.ini
-
-# ---- Loader build ----
-loader/bin/
-loader/obj/
-loader/*.ilk
