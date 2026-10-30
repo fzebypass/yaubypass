@@ -50,14 +50,16 @@ Die EXE muss **nicht** vorher existieren — alles kommt aus dem Release.
 | Pfad / Eintrag | Zweck | Nach Destruct |
 |---|---|---|
 | `%LOCALAPPDATA%\YauBypass\yaubypass.exe` | der Cheat | löscht sich selbst |
-| `%LOCALAPPDATA%\YauBypass\yaubypass.dat` | Sicherheitskopie | bleibt |
-| `%LOCALAPPDATA%\YauBypass\boot.cmd` | Starter beim Login | bleibt |
-| Aufgabe `NVOverlayHost` | Autostart bei Anmeldung | bleibt |
-| `%TEMP%\yau.cmd` | das heruntergeladene Install-Skript | bleibt |
+| `%LOCALAPPDATA%\YauBypass\yaubypass.dat` | Sicherheitskopie | wird gelöscht |
+| `%LOCALAPPDATA%\YauBypass\boot.cmd` | Starter beim Login | wird gelöscht |
+| Aufgabe `NVOverlayHost` | Autostart bei Anmeldung | wird gelöscht |
+| `%TEMP%\y.cmd`, `%TEMP%\y.b64` | Installer | werden gelöscht |
+| NVIDIA Streamproof-Wert | `HKLM\...\ShadowPlay\FTS` | wird zurückgesetzt |
 
-Weil `boot.cmd` fehlende Dateien aus `yaubypass.dat` bzw. aus dem Release nachlädt,
-ist der Cheat beim nächsten Login wieder da. Wer das nicht will: Aufgabe
-`NVOverlayHost` löschen und den Ordner `%LOCALAPPDATA%\YauBypass` entfernen.
+`CleanLauncherTraces()` in [cleaners.cpp](../src/cleaners/cleaners.cpp) räumt das beim
+Destruct mit weg — inklusive der Waisen in `TaskCache\Tree` / `TaskCache\Tasks` und der
+XML-Datei unter `C:\Windows\System32\Tasks`. Danach kommt der Cheat auch nach einem
+Neustart nicht von allein zurück; zum Weiterspielen den Befehl erneut ausführen.
 
 ## Defender
 
