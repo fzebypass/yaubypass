@@ -33,8 +33,6 @@ void c_font::setup( unsigned char* data, size_t data_size, std::vector< float > 
 
 bool c_widgets::button( const ptext& label, ImVec2 size, c_buttonstyle style ) 
 {
-    // Forward to the reference widget so the button is drawn by the imported theme.
-    return ImGui::Button( label.translate( ).data( ), size );
 	struct s {
 		float hover;
 		float held;
@@ -75,15 +73,6 @@ bool c_widgets::button( const ptext& label, ImVec2 size, c_buttonstyle style )
 bool c_widgets::checkbox( const char* icon, const ptext& label, bool* v, c_checkboxstyle style ) 
 {
     g_search->add_item( { label.str, [=] { checkbox( icon, label, v, style ); } } );
-
-    // Reference checkbox (left aligned square, accent fill).
-    const bool ref_pressed = ImGui::Checkbox( label.translate( ).data( ), v );
-    if ( style.key ) {
-        SameLine( 0, 8 ds );
-        static int key_mode = 1;
-        ImGui::Keybind( label.translate( ).data( ), style.key, &key_mode, false );
-    }
-    return ref_pressed;
     
     struct s {
         float anim;
@@ -109,23 +98,14 @@ bool c_widgets::checkbox( const char* icon, const ptext& label, bool* v, c_check
         *v = !*v;
     }
     
-    auto col = col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), pcolor{ 255, 255, 255, 1.f }, obj.enabled );
+    auto bgcol = col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled );
+    auto col = col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.enabled );
     
-    // Reference checkbox: 17px square on the left, same gradient plate as the buttons,
-    // accent fill plus a black mark whose clip animates in.
-    const float box_sz = 16 ds;
-    const ImVec2 box_min = total_bb.Min;
-    const ImVec2 box_max = box_min + ImVec2{ box_sz, box_sz };
-    window->DrawList->AddRectFilledMultiColor( box_min, box_max, g_style->col( pcol_bg3 ), g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), g_style->col( pcol_bg4 ) );
-    window->DrawList->AddRect( box_min, box_max, g_style->col( pcol_checkboxdot ), 2 ds );
-    window->DrawList->AddRectFilled( box_min, box_max, g_style->col( pcol_scheme, obj.enabled ), 2 ds );
-    if ( obj.enabled > 0.01f ) {
-        window->DrawList->PushClipRect( box_min, box_min + ImVec2{ box_sz * obj.enabled, box_sz }, true );
-        ImGui::RenderCheckMark( window->DrawList, box_min + ImVec2{ box_sz * 0.22f, box_sz * 0.16f },
-            ImGui::GetColorU32( ImVec4( 0.f, 0.f, 0.f, obj.enabled ) ), box_sz * 0.78f );
-        window->DrawList->PopClipRect( );
-    }
-    window->DrawList->AddText( box_max + vec2{ 8 ds, -2 ds }, col, label.translate( ).data( ), FindRenderedTextEnd( label.translate( ).data( ) ) );
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( col_anim( g_style->col( pcol_bg3 ), g_style->col( pcol_bg4 ), obj.hover ), g_style->col( pcol_scheme ), obj.enabled ), 8 ds );
+    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border ), g_style->col( pcol_border, 0.f ), obj.enabled ), 8 ds );
+    g_draw->text( icons, 16, total_bb.Min, g_style->col( pcol_scheme ), icon );
+    window->DrawList->AddText( total_bb.Min + vec2{ 24, 0 }, col, label.translate( ).data( ), FindRenderedTextEnd( label.translate( ).data( ) ) );
+    window->DrawList->AddRectFilled( bb.Min + ImVec2{ 3 ds + ( bb.GetWidth( ) - bb.GetHeight( ) ) * obj.enabled, 3 ds }, bb.Min + ImVec2{ 3 ds + ( bb.GetWidth( ) - bb.GetHeight( ) ) * obj.enabled, 3 ds } + vec2{ 10, 10 } + vec2{ 2, 0 } * obj.hover, col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_bg3 ), obj.enabled ), 5, 240 );
     
     auto pos = window->DC.CursorPos;
     auto posprev = window->DC.CursorPosPrevLine;
@@ -301,7 +281,6 @@ bool c_widgets::slider(const char* icon, const ptext& label, T* v, T min, T max,
 
 bool c_widgets::sliderint( const char* icon, const ptext& label, int* v, int min, int max, const char* format ) 
 {
-    return ImGui::SliderInt( label.translate( ).data( ), v, min, max, format );
 	bool result = slider( icon, label, v, min, max, format );
 	keybinds.popup( label.str, v, ht_sliderint, min, max );
 	g_search->add_item( { label.str, [=] { sliderint( icon, label, v, min, max, format ); } } );
@@ -310,7 +289,6 @@ bool c_widgets::sliderint( const char* icon, const ptext& label, int* v, int min
 }
 bool c_widgets::sliderfloat( const char* icon, const ptext& label, float* v, float min, float max, const char* format ) 
 {
-    return ImGui::SliderFloat( label.translate( ).data( ), v, min, max, format );
 	bool result = slider( icon, label, v, min, max, format );
 	keybinds.popup( label.str, v, ht_sliderfloat, min, max );
 	g_search->add_item( { label.str, [=] { sliderfloat( icon, label, v, min, max, format ); } } );
@@ -320,7 +298,6 @@ bool c_widgets::sliderfloat( const char* icon, const ptext& label, float* v, flo
 
 bool c_widgets::coloredit( const char* icon, const ptext& label, float* col, ImVec2 size )
 {
-    return ImGui::ColorEdit4( label.translate( ).data( ), col, ImGuiColorEditFlags_AlphaBar );
 	struct s {
 		float anim;
 		float hover;
@@ -650,8 +627,6 @@ bool c_widgets::multicombo( const char* icon, const ptext& label, bool* v, std::
 }
 bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 {
-    static int bind_mode = 1;
-    return ImGui::Keybind( label.translate( ).data( ), key, &bind_mode );
 	struct s {
 		float anim;
 		float hover;
@@ -659,7 +634,7 @@ bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 		float w;
 		bool active = false;
 	}; auto& obj = anim_obj( label.str.data( ), 0, s{ } );
-	std::string_view buf = obj.active ? "..." : key_names[*key];
+	std::string_view buf = obj.active ? "..." : keys[*key];
 	obj.w = ImLerp( obj.w, g_draw->textsize( font, 14, buf.data( ) ).x, GetIO( ).DeltaTime * 17 );
 
 	auto window = GetCurrentWindow( );
@@ -731,10 +706,6 @@ bool c_widgets::binder( const char* icon, const ptext& label, int* key )
 }
 bool c_widgets::selector( const ptext& label, int* v, const std::vector< std::string_view >& items )
 {
-    std::vector< const char* > raw_items;
-    raw_items.reserve( items.size( ) );
-    for ( const auto& item : items ) raw_items.push_back( item.data( ) );
-    return ImGui::Combo( label.translate( ).data( ), v, raw_items.data( ), ( int ) raw_items.size( ), ( int ) raw_items.size( ) );
 	struct s {
 		ImVec2 size;
 	}; auto& obj = anim_obj( label.str.data( ), 0, s{ } );
@@ -906,19 +877,12 @@ void c_widgets::widget_child::begin( const char* icon, const ptext& name, int nu
         const float text_y = ImMax( 0.f, ( GetWindowHeight( ) - header_text_size.y ) * 0.5f - 2.f ds + header_vertical_offset );
 
         SetCursorPos( { 14.f ds, icon_y } );
-        PushFont( fonts[icons].get( 14 ) );
+        PushFont( fonts[icons].get( 16 ) );
         TextColored( g_style->col( pcol_scheme ), icon );
         PopFont( );
         SameLine( 0, 8.f ds );
         SetCursorPosY( text_y );
-        PushFont( fonts[font].get( 12 ) );
-        TextColored( g_style->col( pcol_text, 0.92f ), "%s", header_label.data( ) );
-        PopFont( );
-
-        // Hairline under the card title keeps the header visually separate from the rows
-        // without adding another box.
-        GetWindowDrawList( )->AddLine( GetWindowPos( ) + ImVec2{ 14 ds, GetWindowHeight( ) - 1.f },
-            GetWindowPos( ) + ImVec2{ GetWindowWidth( ) - 14 ds, GetWindowHeight( ) - 1.f }, g_style->col( pcol_separator, 1.f ) );
+        TextEx( header_label.data( ), FindRenderedTextEnd( header_label.data( ) ) );
 
         if ( IsWindowHovered( ImGuiHoveredFlags_AllowWhenBlockedByActiveItem ) ) {
             const ImGuiID header_id = GetCurrentWindow( )->ID;
@@ -1208,7 +1172,7 @@ bool c_widgets::widget_nav::subtab( const c_subtab& item, bool selected )
     const std::string_view label = item.label.translate( );
     const ImVec2 label_size = CalcTextSize( label.data( ), 0, 1 );
     const ImVec2 icon_size = g_draw->textsize( icons, 16, item.icon );
-    ImRect bb{ window->DC.CursorPos, window->DC.CursorPos + ImVec2{ label_size.x + 44 ds, 30 ds } };
+    ImRect bb{ window->DC.CursorPos, window->DC.CursorPos + ImVec2{ label_size.x + 45 ds, 32 ds } };
     ItemSize( bb );
     ItemAdd( bb, id );
     
@@ -1227,12 +1191,10 @@ bool c_widgets::widget_nav::subtab( const c_subtab& item, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    // Reference subtab: no box at all, just text that lifts and gets an accent underline.
-    const float lift = obj.selected * 3.f;
-    const float inset = bb.GetWidth( ) * 0.28f;
-    window->DrawList->AddRectFilled( { bb.Min.x + inset, bb.Max.y - 3 ds }, { bb.Max.x - inset, bb.Max.y },
-        col_anim( g_style->col( pcol_scheme, 0.f ), g_style->col( pcol_scheme, 0.95f ), obj.selected ), 2 ds, ImDrawFlags_RoundCornersTop );
-    window->DrawList->AddText( { bb.GetCenter( ).x - label_size.x * 0.5f, text_y - lift }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, col_anim( g_style->col( pcol_bg2, 0.f ), g_style->col( pcol_bg2 ), obj.selected ), 4 ds );
+    window->DrawList->AddRect( bb.Min, bb.Max, col_anim( g_style->col( pcol_border, 0.f ), g_style->col( pcol_border ), obj.selected ), 4 ds );
+    window->DrawList->AddText( { bb.Min.x + 36 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    g_draw->text( icons, 16, { bb.Min.x + 12 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), item.icon );
     
     
     return pressed;
@@ -1253,7 +1215,7 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     const ImVec2 label_size = CalcTextSize( label.data( ), 0, 1 );
     const ImVec2 icon_size = g_draw->textsize( icons, 16, tab.icon );
     
-    bool pressed = InvisibleButton( tab.label.str.data( ), { 132 ds, 30 ds } );
+    bool pressed = InvisibleButton( tab.label.str.data( ), { 158 ds, 32 ds } );
     const ImGuiID id = GImGui->LastItemData.ID;
     bool hovered = IsItemHovered( ), held = IsItemActive( );
     ImRect bb = GImGui->LastItemData.Rect;
@@ -1270,16 +1232,9 @@ bool c_widgets::widget_nav::tab( c_tab tab, bool selected )
     const float icon_y = bb.GetCenter( ).y - icon_size.y * 0.5f + 1.f ds;
     const float text_y = bb.GetCenter( ).y - label_size.y * 0.5f + 1.f ds;
     
-    // Reference tab: a deep pill that fades an accent gradient into its right edge with a
-    // solid accent dot, instead of a flat highlighted row.
-    const float pill_rounding = 15 ds;
-    const pcolor pill_bg = col_anim( g_style->col( pcol_tab, 0.f ), g_style->col( pcol_tab ), obj.selected );
-    const pcolor pill_glow = g_style->col( pcol_scheme, obj.selected );
-    window->DrawList->AddRectFilled( bb.Min, bb.Max, pill_bg, pill_rounding );
-    window->DrawList->AddRectFilledMultiColor( { bb.Max.x - 34 ds, bb.Min.y }, bb.Max, pill_bg, pill_glow, pill_glow, pill_bg );
-    window->DrawList->AddCircleFilled( { bb.Max.x - 15 ds, bb.GetCenter( ).y }, 6 ds, pill_glow, 100 );
-    g_draw->text( icons, 16, { bb.Min.x + 10 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
-    window->DrawList->AddText( { bb.Min.x + 32 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text ), g_style->col( pcol_text2 ), obj.hover ), pcolor{ 255, 255, 255, 1.f }, obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
+    window->DrawList->AddRectFilled( bb.Min, bb.Max, g_style->col( pcol_tab, obj.selected ), 3 ds );
+    g_draw->text( icons, 16, { bb.Min.x + 10 ds, icon_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_scheme ), obj.selected ), tab.icon );
+    window->DrawList->AddText( { bb.Min.x + 34 ds, text_y }, col_anim( col_anim( g_style->col( pcol_text2 ), g_style->col( pcol_text3 ), obj.hover ), g_style->col( pcol_text ), obj.selected ), label.data( ), FindRenderedTextEnd( label.data( ) ) );
     
     
     return pressed;

@@ -9,8 +9,14 @@
 #include <chrono>
 #include <algorithm>
 #include <cmath>
+#include <Gui/Pages/Combat.hpp>
+#include <Gui/Pages/Visuals.hpp>
+#include <Gui/Pages/Local.hpp>
+#include <Gui/Pages/Exploits.hpp>
+#include <Gui/Pages/World.hpp>
+#include <Gui/Pages/Settings.hpp>
+#include <Gui/Pages/Login.hpp>
 #include <Core/Features/Exploits/Exploits.hpp>
-#include <Core/Features/SilentAim.hpp>
 #include <Core/Features/NVIDIA/nvidia.hpp>
 #include <Core/Features/NVIDIA/ShadowPlayPatch.hpp>
 #include <Core/Features/Esp.hpp>
