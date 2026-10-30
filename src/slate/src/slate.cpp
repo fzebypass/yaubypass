@@ -265,21 +265,21 @@ namespace {
     }
 
     const seasonal_menu_palette_t& get_menu_palette(const menu_season_t) {
-        // The whole menu palette is derived from the logo artwork: warm gold glow
-        // from the fairy, on the black background the logo sits on.
+        // The menu palette is derived from the logo artwork: the periwinkle blue of the
+        // character, on the same near-black background it sits on.
         static const seasonal_menu_palette_t logo{
             "Dynamic",
-            pcolor{ 255, 205, 92, 1.0f },
-            pcolor{ 255, 233, 168, 1.0f },
-            pcolor{ 255, 247, 220, 1.0f },
-            pcolor{ 246, 241, 230, 1.0f },
-            pcolor{ 172, 162, 142, 1.0f },
-            pcolor{ 172, 162, 142, 0.60f },
+            pcolor{ 143, 166, 232, 1.0f },
+            pcolor{ 186, 202, 246, 1.0f },
+            pcolor{ 214, 225, 255, 1.0f },
+            pcolor{ 234, 239, 255, 1.0f },
+            pcolor{ 150, 158, 182, 1.0f },
+            pcolor{ 150, 158, 182, 0.60f },
             pcolor{ 255, 255, 255, 0.05f },
             pcolor{ 255, 255, 255, 0.04f },
-            pcolor{ 52, 40, 16, 0.14f },
-            pcolor{ 255, 205, 92, 1.0f },
-            pcolor{ 255, 250, 235, 1.0f }
+            pcolor{ 24, 32, 58, 0.18f },
+            pcolor{ 143, 166, 232, 1.0f },
+            pcolor{ 226, 235, 255, 1.0f }
         };
 
         return logo;
