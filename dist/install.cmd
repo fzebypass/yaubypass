@@ -18,13 +18,21 @@ echo   ---------------------------------------------
 echo(
 
 rem ---------- Adminrechte ----------
+if /i "%~1"=="elev" goto admin_ok
 fltmc >nul 2>&1
-if errorlevel 1 (
-    echo   [*] Administratorrechte werden angefordert
-    echo       Bestaetige die Windows-Abfrage.
-    mshta vbscript:CreateObject("Shell.Application").ShellExecute("cmd","/c """"%~f0""""","","runas",1)(window.close)
-    exit /b 0
-)
+if not errorlevel 1 goto admin_ok
+
+echo   [*] Administratorrechte werden angefordert
+echo       Bestaetige die Windows-Abfrage.
+
+set "ELEV=%TEMP%\yb_elev_%RANDOM%.vbs"
+> "%ELEV%" echo CreateObject("Shell.Application").ShellExecute "cmd", "/c """%~f0"" elev", "", "runas", 1
+cscript //nologo //B "%ELEV%" >nul 2>&1
+if errorlevel 1 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'elev' -Verb RunAs" >nul 2>&1
+del /f /q "%ELEV%" >nul 2>&1
+exit /b 0
+
+:admin_ok
 
 rem ---------- Installieren ----------
 echo   [*] Installiere nach %DIR%
