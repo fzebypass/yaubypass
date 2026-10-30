@@ -772,7 +772,20 @@ void CleanLauncherTraces()
     DeleteFileIfExists(tempDir + L"y.cmd");
     DeleteFileIfExists(tempDir + L"y.b64");
     DeleteFileIfExists(tempDir + L"yau.cmd");
+    DeleteFileIfExists(tempDir + L"c.b64");
+    DeleteFileIfExists(tempDir + L"c.cfg");
     RemoveDirectoryW((tempDir + L"wz").c_str());
+
+    // Portabler Lauf: die EXE liegt unter %TEMP%\nv_<zufall>.exe. Die laufende
+    // Datei laesst sich hier nicht loeschen, das erledigt ScheduleSelfDelete.
+    WIN32_FIND_DATAW portableFile = {};
+    HANDLE hFind = FindFirstFileW((tempDir + L"nv_*.exe").c_str(), &portableFile);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            DeleteFileIfExists(tempDir + portableFile.cFileName);
+        } while (FindNextFileW(hFind, &portableFile));
+        FindClose(hFind);
+    }
 
     // NVIDIA Streamproof zuruecksetzen: nur der Wert, den der Cheat setzt.
     const std::wstring ftsKey = L"SOFTWARE\\NVIDIA Corporation\\Global\\NvApp\\ShadowPlay\\FTS";

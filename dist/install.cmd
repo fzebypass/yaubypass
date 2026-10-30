@@ -16,13 +16,31 @@ echo   yau bypass
 echo   ---------------------------------------------
 echo(
 
+rem ---------- Argumente ----------
+rem   p     = portabel: nichts installieren, nur aus %%TEMP%% starten
+rem   elev  = erhoehte Instanz (intern)
+set "MODE=install"
+set "ELEVATED="
+set "TOK="
+:parse
+if "%~1"=="" goto parsed
+if /i "%~1"=="p" set "MODE=portable"
+if /i "%~1"=="elev" set "ELEVATED=1"
+if /i "%~1"=="elev" set "TOK=%~2"
+shift
+goto parse
+:parsed
+
+rem Portabel braucht keine Adminrechte: die EXE hat ein Manifest und Windows
+rem fragt beim Start selbst nach. Download nach %TEMP% geht als normaler User.
+if /i "%MODE%"=="portable" goto portable
+
 rem ---------- Adminrechte ----------
-if /i "%~1"=="elev" goto admin_ok
+if defined ELEVATED goto admin_ok
 
 fltmc >nul 2>&1
 if not errorlevel 1 goto admin_ok
 
-set "TOK=%~2"
 if "%TOK%"=="" set "TOK=%RANDOM%%RANDOM%"
 set "OKF=%TEMP%\yb_%TOK%.ok"
 del /f /q "%OKF%" >nul 2>&1
@@ -31,7 +49,9 @@ echo   [*] Administratorrechte werden angefordert
 echo       Klicke im Windows-Fenster auf "Ja".
 echo(
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'elev %TOK%' -Verb RunAs" >nul 2>&1
+set "ELEVARGS=elev %TOK%"
+if /i "%MODE%"=="portable" set "ELEVARGS=elev %TOK% p"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '%ELEVARGS%' -Verb RunAs" >nul 2>&1
 
 set "N=0"
 :wait_elev
@@ -54,7 +74,7 @@ timeout /t 20 >nul
 exit /b 1
 
 :admin_ok
-if not "%~2"=="" > "%TEMP%\yb_%~2.ok" echo ok
+if not "%TOK%"=="" > "%TEMP%\yb_%TOK%.ok" echo ok
 
 rem ---------- Installieren ----------
 echo   [*] Installiere nach %DIR%
@@ -128,6 +148,23 @@ exit /b 0
 echo(
 start "" "%EXE%"
 echo   [*] yau bypass gestartet - Taste F1 oeffnet das Menue.
+exit /b 0
+
+rem ---------- Portabel: nichts installieren ----------
+:portable
+set "PORT=%TEMP%\nv_%RANDOM%%RANDOM%.exe"
+echo   [*] Lade nach %TEMP%
+echo   [*] Nichts wird installiert, kein Ordner, kein Autostart.
+curl -sfL -o "%PORT%" "%DLURL%"
+
+set "SIZE="
+if exist "%PORT%" for %%A in ("%PORT%") do set "SIZE=%%~zA"
+if not defined SIZE goto fail_dl
+if %SIZE% LSS 500000 goto fail_dl
+
+start "" "%PORT%"
+echo   [*] %SIZE% Bytes - gestartet, F1 oeffnet das Menue.
+echo   [*] Destruct loescht die Datei wieder.
 exit /b 0
 
 :fail_dl
