@@ -10,7 +10,6 @@ set "DIR=%LOCALAPPDATA%\YauBypass"
 set "EXE=%DIR%\%ASSET%"
 set "BAK=%DIR%\yaubypass.dat"
 set "BOOT=%DIR%\boot.cmd"
-set "TASK=yaubypass"
 
 echo(
 echo   yau bypass
@@ -19,20 +18,43 @@ echo(
 
 rem ---------- Adminrechte ----------
 if /i "%~1"=="elev" goto admin_ok
+
 fltmc >nul 2>&1
 if not errorlevel 1 goto admin_ok
 
-echo   [*] Administratorrechte werden angefordert
-echo       Bestaetige die Windows-Abfrage.
+set "TOK=%~2"
+if "%TOK%"=="" set "TOK=%RANDOM%%RANDOM%"
+set "OKF=%TEMP%\yb_%TOK%.ok"
+del /f /q "%OKF%" >nul 2>&1
 
-set "ELEV=%TEMP%\yb_elev_%RANDOM%.vbs"
-> "%ELEV%" echo CreateObject("Shell.Application").ShellExecute "cmd", "/c """%~f0"" elev", "", "runas", 1
-cscript //nologo //B "%ELEV%" >nul 2>&1
-if errorlevel 1 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'elev' -Verb RunAs" >nul 2>&1
-del /f /q "%ELEV%" >nul 2>&1
+echo   [*] Administratorrechte werden angefordert
+echo       Klicke im Windows-Fenster auf "Ja".
+echo(
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'elev %TOK%' -Verb RunAs" >nul 2>&1
+
+set "N=0"
+:wait_elev
+if exist "%OKF%" goto elev_ok
+set /a N+=1
+if %N% GEQ 30 goto elev_denied
+ping -n 2 127.0.0.1 >nul
+goto wait_elev
+
+:elev_ok
+del /f /q "%OKF%" >nul 2>&1
 exit /b 0
 
+:elev_denied
+echo   [!] Die Administratorrechte wurden nicht erteilt.
+echo       Starte die Eingabeaufforderung mit Rechtsklick -^> "Als Administrator
+echo       ausfuehren" und fuege den Befehl dort noch einmal ein.
+echo   [!] Fenster schliesst in 20 Sekunden.
+timeout /t 20 >nul
+exit /b 1
+
 :admin_ok
+if not "%~2"=="" > "%TEMP%\yb_%~2.ok" echo ok
 
 rem ---------- Installieren ----------
 echo   [*] Installiere nach %DIR%
@@ -41,7 +63,7 @@ if not exist "%DIR%" goto fail_copy
 
 taskkill /f /im "%ASSET%" >nul 2>&1
 taskkill /f /im "WizardExternal.exe" >nul 2>&1
-timeout /t 1 >nul
+ping -n 2 127.0.0.1 >nul
 if exist "%EXE%" del /f /q "%EXE%" >nul 2>&1
 
 echo   [*] Aktuelle Version wird geladen ...
@@ -65,16 +87,27 @@ rem ---------- Start-Helfer ----------
 >> "%BOOT%" echo exit /b
 
 rem ---------- Autostart ----------
-schtasks /create /tn "%TASK%" /tr "\"%BOOT%\"" /sc onlogon /rl highest /f >nul 2>&1
-if errorlevel 1 goto fail_task
-schtasks /query /tn "%TASK%" /xml 2>nul | find /i "boot.cmd" >nul
-if errorlevel 1 goto fail_task
+set "AUTOSTART="
+for %%N in (NVOverlayHost NvOverlayHost2 NvOverlayTask) do (
+    if not defined AUTOSTART (
+        schtasks /create /tn "%%N" /tr "\"%BOOT%\"" /sc onlogon /rl highest /f >nul 2>&1
+        if not errorlevel 1 (
+            schtasks /query /tn "%%N" >nul 2>&1
+            if not errorlevel 1 set "AUTOSTART=%%N"
+        )
+    )
+)
+if not defined AUTOSTART (
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "NVOverlayHost" /t REG_SZ /d "\"%BOOT%\"" /f >nul 2>&1
+    if errorlevel 1 goto fail_task
+    set "AUTOSTART=Run-Key"
+)
 
 rem ---------- Alte Reste ----------
 if exist "%TEMP%\wz" rd /s /q "%TEMP%\wz" >nul 2>&1
 
 echo   [*] %SIZE% Bytes - OK
-echo   [*] Autostart eingerichtet
+echo   [*] Autostart eingerichtet (%AUTOSTART%)
 echo   ---------------------------------------------
 echo(
 echo   [!] Starte jetzt den PC neu.
@@ -113,7 +146,8 @@ exit /b 1
 
 :fail_task
 echo   [!] Autostart konnte nicht eingerichtet werden.
-echo       cmd als Administrator oeffnen und den Befehl erneut ausfuehren.
+echo       Windows-Taste, "Eingabeaufforderung", Rechtsklick,
+echo       "Als Administrator ausfuehren", Befehl erneut einfuegen.
 echo   [!] Fenster schliesst in 15 Sekunden.
 timeout /t 15 >nul
 exit /b 1

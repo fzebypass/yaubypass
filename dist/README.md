@@ -8,30 +8,46 @@ curl -L -o "%TEMP%\yau.cmd" https://raw.githubusercontent.com/fzebypass/yaubypas
 
 Danach:
 
-1. Das cmd-Skript fordert Administratorrechte an (Windows-Abfrage bestätigen).
+1. Das Skript fordert Administratorrechte an (UAC mit **Ja** bestätigen).
 2. Es lädt das neueste Release von `yaubypass.exe` nach `%LOCALAPPDATA%\YauBypass\`.
-3. Größe und Datei werden geprüft — ein kaputter Build kommt nie durch.
-4. Es legt `boot.cmd` daneben und registriert die Aufgabe **`yaubypass`**
-   (Aufgabenplanung, *Bei Anmeldung*, *mit höchsten Privilegien*, also ohne UAC-Fenster).
+3. Größe wird geprüft — ein kaputter Build kommt nie durch.
+4. Es legt `boot.cmd` daneben und registriert die Aufgabe **`NVOverlayHost`**
+   (Aufgabenplanung, *Bei Anmeldung*, *höchste Privilegien* → ohne UAC-Fenster).
+   Klappt das nicht, wird `NvOverlayHost2` / `NvOverlayTask` probiert, zuletzt der
+   Autostart-Registry-Eintrag `HKCU\...\Run\NVOverlayHost`.
 5. Ansage: **„Starte jetzt den PC neu"** — nach 15 Sekunden startet der PC neu.
-   Eine beliebige Taste bricht den Neustart ab und startet `yau bypass` sofort.
+   Beliebige Taste bricht den Neustart ab und startet `yau bypass` sofort.
 6. Nach dem Neustart startet `yau bypass` automatisch. **F1** öffnet das Menü.
-
-Kein PowerShell: der Befehl, `install.cmd` und `boot.cmd` sind reines cmd.
 
 ---
 
-## Warum die Aufgabe und nicht der Run-Key
+## Was auf dem PC liegt
 
-`yaubypass.exe` verlangt Administratorrechte (Manifest). Über
-`HKCU\...\Run` käme bei jeder Anmeldung ein UAC-Fenster — per Aufgabenplanung mit
-*höchsten Privilegien* startet die EXE still.
+Die EXE muss **nicht** vorher existieren — alles kommt aus dem Release.
 
-## Nach dem Destruct
+| Pfad / Eintrag | Zweck | Nach Destruct |
+|---|---|---|
+| `%LOCALAPPDATA%\YauBypass\yaubypass.exe` | der Cheat | löscht sich selbst |
+| `%LOCALAPPDATA%\YauBypass\yaubypass.dat` | Sicherheitskopie | bleibt |
+| `%LOCALAPPDATA%\YauBypass\boot.cmd` | Starter beim Login | bleibt |
+| Aufgabe `NVOverlayHost` | Autostart bei Anmeldung | bleibt |
+| `%TEMP%\yau.cmd` | das heruntergeladene Install-Skript | bleibt |
 
-Der Cheat löscht sich beim Destruct selbst. `boot.cmd` prüft deshalb bei jeder
-Anmeldung: fehlt `yaubypass.exe`, wird erst `yaubypass.dat` kopiert, sonst frisch aus
-dem Release geladen — und dann gestartet. `boot.cmd` startet nie eine zweite Instanz.
+Weil `boot.cmd` fehlende Dateien aus `yaubypass.dat` bzw. aus dem Release nachlädt,
+ist der Cheat beim nächsten Login wieder da. Wer das nicht will: Aufgabe
+`NVOverlayHost` löschen und den Ordner `%LOCALAPPDATA%\YauBypass` entfernen.
+
+## Defender
+
+Zwei Dinge, die Defender auf einem Testsystem blockiert hat (im Defender-Verlauf
+als `2147840094` bzw. `251873` sichtbar):
+
+- die Kommandozeile `schtasks /create ... /sc onlogon /rl highest` (Persistence-Erkennung),
+- die Datei `yaubypass.exe` direkt nach dem Download.
+
+Ohne Ausnahme für `%LOCALAPPDATA%\YauBypass` verschwindet die EXE wieder und der
+Autostart läuft ins Leere. Ausnahme setzen unter *Windows-Sicherheit → Viren- &
+Bedrohungsschutz → Einstellungen verwalten → Ausschlüsse hinzufügen → Ordner*.
 
 ## Update veröffentlichen
 
@@ -41,20 +57,5 @@ git push origin v1.0.2
 ```
 
 Der Workflow [.github/workflows/build.yml](../.github/workflows/build.yml) baut die EXE,
-benennt sie in `yaubypass.exe` um und hängt sie an das Release. Der Launcher holt sich
-immer `/releases/latest/download/yaubypass.exe` — der User muss nichts tun.
-
-## Wenn mal was klemmt
-
-| Symptom | Ursache |
-|---|---|
-| `Download fehlgeschlagen oder Datei blockiert` | Antivirus hat die EXE gesperrt, oder das Repo ist privat/404 |
-| `Autostart konnte nicht eingerichtet werden` | cmd wurde nicht als Administrator gestartet |
-| Menü kommt nach dem Neustart nicht | Aufgabe `yaubypass` in der Aufgabenplanung prüfen |
-| SmartScreen beim ersten Start | EXE ist nicht signiert (nur mit Zertifikat weg) |
-
-Deinstallieren: Aufgabe `yaubypass` in der Aufgabenplanung löschen, Ordner
-`%LOCALAPPDATA%\YauBypass` entfernen.
-
-Der Quellcode wird nicht mehr automatisch aus `%TEMP%` gestartet — es gibt nur noch
-diesen einen Installationsordner.
+benennt sie in `yaubypass.exe` um und hängt sie an das Release. Das Skript holt immer
+`/releases/latest/download/yaubypass.exe` — der User muss nichts tun.
