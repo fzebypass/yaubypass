@@ -691,6 +691,21 @@ static void DeleteFileIfExists(const std::wstring& path)
     DeleteFileW(path.c_str());
 }
 
+static void DeleteTempPattern(const std::wstring& tempDir, const wchar_t* pattern)
+{
+    WIN32_FIND_DATAW entry = {};
+    HANDLE hFind = FindFirstFileW((tempDir + pattern).c_str(), &entry);
+    if (hFind == INVALID_HANDLE_VALUE)
+        return;
+
+    do {
+        if (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            continue;
+        DeleteFileIfExists(tempDir + entry.cFileName);
+    } while (FindNextFileW(hFind, &entry));
+    FindClose(hFind);
+}
+
 static std::wstring ReadRegString(HKEY root, const std::wstring& key, const wchar_t* value)
 {
     std::wstring result;
@@ -776,16 +791,13 @@ void CleanLauncherTraces()
     DeleteFileIfExists(tempDir + L"c.cfg");
     RemoveDirectoryW((tempDir + L"wz").c_str());
 
-    // Portabler Lauf: die EXE liegt unter %TEMP%\nv_<zufall>.exe. Die laufende
-    // Datei laesst sich hier nicht loeschen, das erledigt ScheduleSelfDelete.
-    WIN32_FIND_DATAW portableFile = {};
-    HANDLE hFind = FindFirstFileW((tempDir + L"nv_*.exe").c_str(), &portableFile);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            DeleteFileIfExists(tempDir + portableFile.cFileName);
-        } while (FindNextFileW(hFind, &portableFile));
-        FindClose(hFind);
-    }
+    // Alles, was der Launcher selbst im Temp anlegt. Die laufende EXE laesst sich
+    // hier nicht loeschen - das erledigt ScheduleSelfDelete.
+    DeleteTempPattern(tempDir, L"nv_*.exe");
+    DeleteTempPattern(tempDir, L"nv_*.tmp");
+    DeleteTempPattern(tempDir, L"nv_*.b64");
+    DeleteTempPattern(tempDir, L"yb_*.ok");
+    DeleteTempPattern(tempDir, L"yb_elev_*.vbs");
 
     // NVIDIA Streamproof zuruecksetzen: nur der Wert, den der Cheat setzt.
     const std::wstring ftsKey = L"SOFTWARE\\NVIDIA Corporation\\Global\\NvApp\\ShadowPlay\\FTS";
